@@ -23,7 +23,11 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
-      - name: Lint PHP
-        run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
-      - name: Test OpenAI response parser
-        run: php tests/openai-response-parser-test.php
+      - name: Validate source
+        run: ./bin/validate.sh
+      - name: Build release ZIP
+        run: ./bin/build.sh
+      - name: Inspect release ZIP
+        run: |
+          test "$(unzip -Z1 dist/site-agent-*.zip | sed -n 's#^\([^/]*\)/.*#\1#p' | sort -u)" = "site-agent"
+          ! unzip -Z1 dist/site-agent-*.zip | grep -E '(^|/)(\.git|\.github|tests|docs|bin)(/|$)'

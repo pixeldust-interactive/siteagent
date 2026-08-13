@@ -197,6 +197,8 @@ final class Site_Agent_OpenAI_Client {
 			$data->add_data( self::diagnostics( $response, $text ) );
 			return $data;
 		}
+		$call_shapes = self::tool_call_shapes( $data );
+		$data = self::canonicalize_tool_calls( $data );
 
 		$validation = self::validate_turn( $data, $require_answer );
 		if ( is_wp_error( $validation ) ) {
@@ -204,6 +206,7 @@ final class Site_Agent_OpenAI_Client {
 			$diagnostics['planning_fields'] = array_values( array_map( 'sanitize_key', array_keys( $data ) ) );
 			$diagnostics['read_call_count'] = is_array( $data['read_calls'] ?? null ) ? count( $data['read_calls'] ) : null;
 			$diagnostics['write_action_count'] = is_array( $data['write_actions'] ?? null ) ? count( $data['write_actions'] ) : null;
+			$diagnostics['tool_call_shapes'] = $call_shapes;
 			$validation->add_data( $diagnostics );
 			return $validation;
 		}
@@ -272,6 +275,67 @@ final class Site_Agent_OpenAI_Client {
 		}
 
 		return '';
+	}
+
+	private static function canonicalize_tool_calls( array $data ): array {
+		foreach ( array( 'read_calls', 'write_actions' ) as $field ) {
+			if ( ! is_array( $data[ $field ] ?? null ) ) {
+				continue;
+			}
+			foreach ( $data[ $field ] as $index => $call ) {
+				$name = '';
+				$args = array();
+				if ( is_string( $call ) ) {
+					$name = $call;
+				} elseif ( is_array( $call ) ) {
+					$name = $call['name'] ?? $call['tool'] ?? $call['action'] ?? $call['tool_name'] ?? '';
+					if ( array_key_exists( 'args', $call ) ) {
+						$args = $call['args'];
+					} elseif ( array_key_exists( 'arguments', $call ) ) {
+						$args = $call['arguments'];
+					} elseif ( array_key_exists( 'parameters', $call ) ) {
+						$args = $call['parameters'];
+					} elseif ( 1 === count( $call ) && is_string( array_key_first( $call ) ) ) {
+						$name = (string) array_key_first( $call );
+						$args = reset( $call );
+					}
+				}
+				if ( is_string( $args ) ) {
+					$decoded_args = json_decode( $args, true );
+					$args = is_array( $decoded_args ) ? $decoded_args : $args;
+				}
+				$data[ $field ][ $index ] = array(
+					'name' => $name,
+					'args' => $args,
+				);
+			}
+		}
+		return $data;
+	}
+
+	private static function tool_call_shapes( array $data ): array {
+		$shapes = array();
+		foreach ( array( 'read_calls', 'write_actions' ) as $field ) {
+			$calls = $data[ $field ] ?? null;
+			if ( ! is_array( $calls ) ) {
+				$shapes[ $field ] = array( 'type' => gettype( $calls ) );
+				continue;
+			}
+			$shapes[ $field ] = array();
+			foreach ( array_slice( $calls, 0, 10 ) as $call ) {
+				if ( ! is_array( $call ) ) {
+					$shapes[ $field ][] = array( 'type' => gettype( $call ) );
+					continue;
+				}
+				$shapes[ $field ][] = array(
+					'type' => 'array',
+					'keys' => array_values( array_map( 'sanitize_key', array_map( 'strval', array_keys( $call ) ) ) ),
+					'name_type' => gettype( $call['name'] ?? $call['tool'] ?? $call['action'] ?? $call['tool_name'] ?? null ),
+					'args_type' => gettype( $call['args'] ?? $call['arguments'] ?? $call['parameters'] ?? null ),
+				);
+			}
+		}
+		return $shapes;
 	}
 
 	private static function validate_turn( array $data, bool $require_answer = false ): bool|WP_Error {

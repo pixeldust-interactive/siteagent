@@ -450,7 +450,7 @@ final class Site_Agent_Action_Registry {
 	private static function validate_write(
 		string $name,
 		array $args
-	): true|WP_Error {
+	): bool|WP_Error {
 		$catalog = self::catalog();
 
 		if ( ! isset( $catalog['write'][ $name ] ) ) {
@@ -1456,7 +1456,7 @@ final class Site_Agent_Action_Registry {
 	private static function acquire_lock(
 		string $key,
 		int $ttl
-	): true|WP_Error {
+	): bool|WP_Error {
 		global $wpdb;
 
 		$table = Site_Agent_Database::table( 'locks' );

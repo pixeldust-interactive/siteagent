@@ -77,9 +77,14 @@ final class Site_Agent_Agent {
 		$system = self::system_prompt( $role );
 		$turn = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context );
 		if ( is_wp_error( $turn ) ) {
+			$error_data = $turn->get_error_data();
 			Site_Agent_Audit_Log::record(
 				'chat_provider_failed',
-				array( 'error' => Site_Agent_Redactor::redact_string( $turn->get_error_message() ) ),
+				array(
+					'error_code'  => sanitize_key( $turn->get_error_code() ),
+					'error'       => Site_Agent_Redactor::redact_string( $turn->get_error_message() ),
+					'diagnostics' => is_array( $error_data ) ? Site_Agent_Redactor::redact( $error_data ) : array(),
+				),
 				'error',
 				get_current_user_id(),
 				$redacted_prompt
@@ -195,6 +200,7 @@ final class Site_Agent_Agent {
 				'Do not claim certainty when hosting telemetry, external SaaS state, logs, or historical snapshots are unavailable.',
 				'Do not claim that a rollback exists until the server returns a reversible ledger entry.',
 				'Prefer the minimum necessary change. Ask for clarification when the target or intended result is ambiguous.',
+				'Always provide a useful non-empty answer, including when asking a clarification question or requesting a read tool.',
 				'AI role focus: ' . self::ROLES[ $role ]['focus'],
 				'Read tools: ' . wp_json_encode( $catalog['read'] ),
 				'Write actions that may be proposed: ' . wp_json_encode( $catalog['write'] ),

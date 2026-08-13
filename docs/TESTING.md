@@ -1,5 +1,9 @@
 # Testing
 
+## OpenAI planning responses
+
+Run `php tests/openai-response-parser-test.php` to cover bare structured JSON, fenced JSON, JSON surrounded by prose, malformed JSON, missing fields, empty answers, refusals, and incomplete provider responses. These tests use deterministic provider fixtures and never require or read an API key.
+
 Run:
 
 ```bash

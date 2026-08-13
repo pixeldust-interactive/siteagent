@@ -57,7 +57,7 @@ This is an early developer build intended for controlled testing on backed-up si
 
 1. Back up the site.
 2. Upload and activate Site Agent.
-3. Add the API key outside the database, preferably in wp-config.php:
+3. Open Site Agent > Settings and save an API key using encrypted storage, or add it outside the database (preferably in wp-config.php):
    `define( 'SITE_AGENT_OPENAI_API_KEY', 'your-key-here' );`
 4. Open Site Agent > Knowledge and rebuild the local index.
 5. Review Site Agent > Roles before granting non-administrators execution rights.

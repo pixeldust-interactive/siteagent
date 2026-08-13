@@ -15,7 +15,7 @@ This deliberately rejects Application Password and generic API-proxy use.
 
 ## Credential boundary
 
-The plugin never stores an OpenAI API key in an option, post, user record, custom table, JavaScript variable, HTML field, or audit record. The key can come only from:
+The plugin can store an OpenAI API key only in the dedicated encrypted credential option. It uses AES-256-GCM with key material derived from the WordPress authentication salt, and the full key is never returned to the browser, JavaScript, HTML, or audit records. A constant, environment variable, or filter takes precedence over the encrypted option. The key can come from:
 
 - `SITE_AGENT_OPENAI_API_KEY`;
 - an environment variable with the same name;

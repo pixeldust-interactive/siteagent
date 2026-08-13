@@ -12,12 +12,25 @@ final class Site_Agent_Browser_Guard {
 		$nonce = isset( $_SERVER['HTTP_X_WP_NONCE'] )
 			? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_WP_NONCE'] ) )
 			: '';
-		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
-			return false;
+
+		/*
+		 * WordPress REST cookie authentication requires X-WP-Nonce and leaves
+		 * unauthenticated requests without a current user. Application Passwords
+		 * authenticate the current user independently and do not issue REST
+		 * nonces. Only apply browser CSRF checks when a nonce is present; a
+		 * capability-bearing current user without one has already been accepted
+		 * by another WordPress REST authentication handler.
+		 */
+		if ( '' === $nonce ) {
+			$authorization = isset( $_SERVER['HTTP_AUTHORIZATION'] )
+				? trim( (string) wp_unslash( $_SERVER['HTTP_AUTHORIZATION'] ) )
+				: '';
+			$is_basic_auth = str_starts_with( strtolower( $authorization ), 'basic ' )
+				|| ( isset( $_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW'] ) && '' !== (string) $_SERVER['PHP_AUTH_USER'] );
+			return $is_basic_auth;
 		}
 
-		// This intentionally excludes Application Password/basic-auth access.
-		if ( ! wp_validate_auth_cookie( '', 'logged_in' ) ) {
+		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) || ! wp_validate_auth_cookie( '', 'logged_in' ) ) {
 			return false;
 		}
 

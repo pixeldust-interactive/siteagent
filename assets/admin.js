@@ -64,6 +64,23 @@
 		wrap.scrollIntoView({ block: 'end', behavior: 'smooth' });
 	}
 
+	function appendWelcome(container) {
+		appendMessage(container, 'Site Agent', 'What would you like to know or change?');
+		const starters = el('div', 'site-agent-starters');
+		[
+			'What changed on my site this week?',
+			'Is anything on my site unhealthy?',
+			'Which pages need attention?',
+			'What could break if I remove a plugin?',
+		].forEach((text) => {
+			const button = el('button', 'site-agent-starter', text);
+			button.type = 'button';
+			button.dataset.prompt = text;
+			starters.append(button);
+		});
+		container?.append(starters);
+	}
+
 	function renderSources(container, sources) {
 		if (!container || !Array.isArray(sources) || !sources.length) return;
 		const details = el('details', 'site-agent-sources');
@@ -83,7 +100,7 @@
 		if (!container || !proposal?.plan || !proposal.approval_token) return;
 		const tokenBox = { value: String(proposal.approval_token) };
 		const card = el('section', `site-agent-proposal risk-${proposal.plan.highest_risk || 'high'}`);
-		card.append(el('h3', '', 'Review exact action plan'));
+		card.append(el('h3', '', 'Review the proposed change'));
 		if (proposal.plan.reason) card.append(el('p', 'site-agent-proposal-reason', proposal.plan.reason));
 
 		const list = el('ol');
@@ -101,11 +118,14 @@
 		const button = el(
 			'button',
 			'button button-primary',
-			proposal.plan.highest_risk === 'high' ? 'Approve and execute high-risk plan' : 'Approve and execute'
+			proposal.plan.highest_risk === 'high' ? `Approve ${proposal.plan.actions?.length || 1} high-impact change${proposal.plan.actions?.length === 1 ? '' : 's'}` : `Make ${proposal.plan.actions?.length || 1} change${proposal.plan.actions?.length === 1 ? '' : 's'}`
 		);
 		button.type = 'button';
 		const status = el('span', 'site-agent-status');
-		controls.append(button, status);
+		const cancel = el('button', 'button', 'Cancel');
+		cancel.type = 'button';
+		cancel.addEventListener('click', () => card.remove());
+		controls.append(button, cancel, status);
 		card.append(controls);
 		container.append(card);
 
@@ -155,14 +175,31 @@
 			conversationId = '';
 			clear(chat);
 			clear(proposals);
-			appendMessage(chat, 'Site Agent', 'New private conversation. What do you need to know or change?');
+			appendWelcome(chat);
 			prompt.focus();
+		});
+
+		chat?.addEventListener('click', (event) => {
+			const starter = event.target.closest('[data-prompt]');
+			if (!starter) return;
+			prompt.value = starter.dataset.prompt || '';
+			prompt.focus();
+		});
+
+		prompt?.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+				event.preventDefault();
+				form.requestSubmit();
+			}
 		});
 
 		form.addEventListener('submit', async (event) => {
 			event.preventDefault();
+			if (form.dataset.pending === '1') return;
 			const text = String(prompt.value || '').trim();
 			if (!text) return;
+			form.dataset.pending = '1';
+			form.querySelectorAll('.site-agent-retry').forEach((node) => node.remove());
 			appendMessage(chat, 'You', text);
 			prompt.value = '';
 			clear(proposals);
@@ -186,7 +223,13 @@
 			} catch (error) {
 				appendMessage(chat, 'System', error.message);
 				setStatus(status, error.message, true);
+				prompt.value = text;
+				const retry = el('button', 'button site-agent-retry', 'Retry');
+				retry.type = 'button';
+				retry.addEventListener('click', () => form.requestSubmit(), { once: true });
+				status.after(retry);
 			} finally {
+				form.dataset.pending = '0';
 				form.querySelector('button[type="submit"]').disabled = false;
 				prompt.focus();
 			}

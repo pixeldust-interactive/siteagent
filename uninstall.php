@@ -16,6 +16,7 @@ function site_agent_uninstall_site(): void {
 	}
 
 	delete_option( 'site_agent_settings' );
+	delete_option( 'site_agent_openai_credential' );
 	delete_option( 'site_agent_schema_version' );
 	delete_option( 'site_agent_index_active_generation' );
 	delete_option( 'site_agent_index_build_generation' );

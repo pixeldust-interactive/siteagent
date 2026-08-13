@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Site_Agent_OpenAI_Client {
 	private const ENDPOINT = 'https://api.openai.com/v1/responses';
+	private const KEY_OPTION = 'site_agent_openai_credential';
 
 	public static function is_configured(): bool {
 		return '' !== self::api_key();
@@ -24,8 +25,86 @@ final class Site_Agent_OpenAI_Client {
 			$key = (string) SITE_AGENT_OPENAI_API_KEY;
 		} elseif ( getenv( 'SITE_AGENT_OPENAI_API_KEY' ) ) {
 			$key = (string) getenv( 'SITE_AGENT_OPENAI_API_KEY' );
+		} else {
+			$key = self::decrypt_key( (string) get_option( self::KEY_OPTION, '' ) );
 		}
 		return trim( (string) apply_filters( 'site_agent_openai_api_key', $key ) );
+	}
+
+	public static function key_source(): string {
+		if ( defined( 'SITE_AGENT_OPENAI_API_KEY' ) || getenv( 'SITE_AGENT_OPENAI_API_KEY' ) ) {
+			return 'server';
+		}
+		return get_option( self::KEY_OPTION, '' ) ? 'wordpress_encrypted' : 'none';
+	}
+
+	public static function save_key( string $key ): true|WP_Error {
+		$key = trim( $key );
+		if ( strlen( $key ) < 20 || ! str_starts_with( $key, 'sk-' ) ) {
+			return new WP_Error( 'invalid_api_key_format', __( 'Enter a complete OpenAI API key beginning with sk-.', 'site-agent' ) );
+		}
+		$valid = self::validate_key( $key );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+		$encrypted = self::encrypt_key( $key );
+		if ( is_wp_error( $encrypted ) ) {
+			return $encrypted;
+		}
+		update_option( self::KEY_OPTION, $encrypted, false );
+		return true;
+	}
+
+	public static function remove_key(): void {
+		delete_option( self::KEY_OPTION );
+	}
+
+	public static function validate_key( string $key = '' ): true|WP_Error {
+		$key = $key ?: self::api_key();
+		if ( '' === $key ) {
+			return new WP_Error( 'openai_not_configured', __( 'Add an OpenAI API key before testing the connection.', 'site-agent' ) );
+		}
+		$response = wp_remote_get(
+			'https://api.openai.com/v1/models',
+			array(
+				'timeout'     => 20,
+				'redirection' => 0,
+				'headers'     => array( 'Authorization' => 'Bearer ' . $key ),
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			return new WP_Error( 'provider_request_failed', __( 'Site Agent could not reach OpenAI. Check the site network connection and try again.', 'site-agent' ) );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $code ) {
+			return new WP_Error( 'provider_auth_failed', __( 'OpenAI rejected this key. Check that it is active and that API billing is enabled.', 'site-agent' ) );
+		}
+		return true;
+	}
+
+	private static function encrypt_key( string $key ): string|WP_Error {
+		if ( ! function_exists( 'openssl_encrypt' ) ) {
+			return new WP_Error( 'encryption_unavailable', __( 'This server cannot securely encrypt the API key. Configure it in wp-config.php instead.', 'site-agent' ) );
+		}
+		$iv = random_bytes( 12 );
+		$tag = '';
+		$ciphertext = openssl_encrypt( $key, 'aes-256-gcm', hash( 'sha256', wp_salt( 'auth' ), true ), OPENSSL_RAW_DATA, $iv, $tag );
+		if ( false === $ciphertext ) {
+			return new WP_Error( 'encryption_failed', __( 'The API key could not be encrypted.', 'site-agent' ) );
+		}
+		return base64_encode( $iv . $tag . $ciphertext );
+	}
+
+	private static function decrypt_key( string $stored ): string {
+		if ( '' === $stored || ! function_exists( 'openssl_decrypt' ) ) {
+			return '';
+		}
+		$decoded = base64_decode( $stored, true );
+		if ( false === $decoded || strlen( $decoded ) < 29 ) {
+			return '';
+		}
+		$plain = openssl_decrypt( substr( $decoded, 28 ), 'aes-256-gcm', hash( 'sha256', wp_salt( 'auth' ), true ), OPENSSL_RAW_DATA, substr( $decoded, 0, 12 ), substr( $decoded, 12, 16 ) );
+		return is_string( $plain ) ? $plain : '';
 	}
 
 	public static function complete_turn(

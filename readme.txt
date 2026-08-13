@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,11 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.2.0 =
+* Added guided encrypted OpenAI API-key setup, validation, replacement, and removal.
+* Added Application Password support while preserving cookie nonce and same-origin checks.
+* Rebuilt the admin experience around chat, history, settings, progressive disclosure, responsive design, and accessible interaction states.
 
 = 0.1.0 =
 * Initial full developer build.

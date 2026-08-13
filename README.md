@@ -4,14 +4,14 @@
 
 Site Agent is a private, admin-only WordPress knowledge and action layer. It inventories one site, retrieves relevant local evidence, lets an AI planner request tightly controlled tools, converts writes into exact review plans, and records supported changes for conflict-aware rollback.
 
-Version 0.1.0 is a developer build for backed-up test sites. It is intentionally broad enough to use, but not marketed as omniscient.
+Version 0.2.0 is a developer build for backed-up test sites. It is intentionally broad enough to use, but not marketed as omniscient.
 
 ## Security boundary
 
 - Authenticated wp-admin browser sessions only.
 - No public chatbot and no generic prompt endpoint.
 - REST nonce, logged-in cookie, same-origin/referrer, Site Agent capability, and native target permission checks.
-- OpenAI API key is read from a constant, environment variable, or filter. It is never stored by the plugin.
+- OpenAI API key can be supplied by a constant, environment variable, or filter, or saved through Settings using authenticated encryption. The full key is never rendered back to the browser.
 - Secrets are excluded before indexing and recursively redacted before provider requests, audit records, and local chat storage.
 - Provider output is a plan, never authority.
 - Read tools are allowlisted and bounded.

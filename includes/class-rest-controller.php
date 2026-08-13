@@ -139,7 +139,8 @@ final class Site_Agent_Rest_Controller {
 				'version'       => SITE_AGENT_VERSION,
 				'provider'      => Site_Agent_OpenAI_Client::is_configured() ? 'openai' : 'local',
 				'model'         => Site_Agent_OpenAI_Client::model(),
-				'key_stored'    => false,
+				'key_stored'    => 'wordpress_encrypted' === Site_Agent_OpenAI_Client::key_source(),
+				'key_source'    => Site_Agent_OpenAI_Client::key_source(),
 				'index'         => Site_Agent_Indexer::stats(),
 				'roles'         => Site_Agent_Agent::roles(),
 				'capabilities'  => array(

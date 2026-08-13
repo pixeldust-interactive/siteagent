@@ -407,7 +407,7 @@ final class Site_Agent_Ledger {
 		return $fallback;
 	}
 
-	private static function restore_state( array $row, mixed $before ): true|WP_Error {
+	private static function restore_state( array $row, mixed $before ): bool|WP_Error {
 		$type = (string) $row['object_type'];
 		$id   = (string) $row['object_id'];
 
@@ -477,7 +477,7 @@ final class Site_Agent_Ledger {
 		return new WP_Error( 'unsupported_rollback', __( 'This target type is not supported by rollback.', 'site-agent' ) );
 	}
 
-	private static function can_rollback_target( array $row, mixed $before ): true|WP_Error {
+	private static function can_rollback_target( array $row, mixed $before ): bool|WP_Error {
 		$type = (string) $row['object_type'];
 		if ( 'post' === $type && ! current_user_can( 'edit_post', (int) $row['object_id'] ) ) {
 			return new WP_Error( 'forbidden_target', __( 'You cannot edit the target post.', 'site-agent' ) );

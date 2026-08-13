@@ -38,7 +38,7 @@ final class Site_Agent_OpenAI_Client {
 		return get_option( self::KEY_OPTION, '' ) ? 'wordpress_encrypted' : 'none';
 	}
 
-	public static function save_key( string $key ): true|WP_Error {
+	public static function save_key( string $key ): bool|WP_Error {
 		$key = trim( $key );
 		if ( strlen( $key ) < 20 || ! str_starts_with( $key, 'sk-' ) ) {
 			return new WP_Error( 'invalid_api_key_format', __( 'Enter a complete OpenAI API key beginning with sk-.', 'site-agent' ) );
@@ -59,7 +59,7 @@ final class Site_Agent_OpenAI_Client {
 		delete_option( self::KEY_OPTION );
 	}
 
-	public static function validate_key( string $key = '' ): true|WP_Error {
+	public static function validate_key( string $key = '' ): bool|WP_Error {
 		$key = $key ?: self::api_key();
 		if ( '' === $key ) {
 			return new WP_Error( 'openai_not_configured', __( 'Add an OpenAI API key before testing the connection.', 'site-agent' ) );
@@ -269,7 +269,7 @@ final class Site_Agent_OpenAI_Client {
 		return '';
 	}
 
-	private static function validate_turn( array $data ): true|WP_Error {
+	private static function validate_turn( array $data ): bool|WP_Error {
 		$required = array( 'answer', 'read_calls', 'write_actions', 'needs_clarification', 'clarification_question' );
 		foreach ( $required as $field ) {
 			if ( ! array_key_exists( $field, $data ) ) {

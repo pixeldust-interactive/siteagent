@@ -34,6 +34,8 @@ $cases = array(
 	'leading and trailing text' => array( response( "Planning result:\n{$valid}\nEnd." ), false ),
 	'read plan without answer'  => array( response( '{"read_calls":[{"name":"site.summary","args":{}}],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), false, false ),
 	'read plan as final answer' => array( response( '{"read_calls":[{"name":"site.summary","args":{}}],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), 'provider_schema_error', true ),
+	'aliased read tool'         => array( response( '{"read_calls":[{"tool":"site.summary","arguments":"{}"}],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), false, false, 'site.summary' ),
+	'named read tool map'       => array( response( '{"read_calls":[{"site.summary":{}}],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), false, false, 'site.summary' ),
 	'write plan without answer' => array( response( '{"read_calls":[],"write_actions":[{"name":"option.update","args":{"name":"blogdescription","value":"Test"}}],"needs_clarification":false,"clarification_question":""}' ), false ),
 	'malformed JSON'            => array( response( '{"answer":' ), 'provider_parse_error' ),
 	'missing fields'            => array( response( '{"answer":"Hello"}' ), 'provider_schema_error' ),
@@ -53,9 +55,11 @@ foreach ( $cases as $name => $case ) {
 	$require_answer = $case[2] ?? false;
 	$result = $parse->invoke( null, $fixture, $require_answer );
 	$actual_error = is_wp_error( $result ) ? $result->get_error_code() : false;
-	if ( $actual_error !== $expected_error ) {
+	$expected_call = $case[3] ?? null;
+	$actual_call = ! is_wp_error( $result ) ? ( $result['read_calls'][0]['name'] ?? null ) : null;
+	if ( $actual_error !== $expected_error || ( null !== $expected_call && $actual_call !== $expected_call ) ) {
 		$failures++;
-		fwrite( STDERR, "FAIL {$name}: expected " . var_export( $expected_error, true ) . ', got ' . var_export( $actual_error, true ) . PHP_EOL );
+		fwrite( STDERR, "FAIL {$name}: expected error/call " . var_export( array( $expected_error, $expected_call ), true ) . ', got ' . var_export( array( $actual_error, $actual_call ), true ) . PHP_EOL );
 	} else {
 		echo "PASS {$name}" . PHP_EOL;
 	}

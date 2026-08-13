@@ -1,0 +1,209 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+final class Site_Agent_OpenAI_Client {
+	private const ENDPOINT = 'https://api.openai.com/v1/responses';
+
+	public static function is_configured(): bool {
+		return '' !== self::api_key();
+	}
+
+	public static function model(): string {
+		$settings = get_option( 'site_agent_settings', array() );
+		$model = defined( 'SITE_AGENT_OPENAI_MODEL' )
+			? (string) SITE_AGENT_OPENAI_MODEL
+			: (string) ( $settings['model'] ?? 'gpt-5-mini' );
+		return sanitize_text_field( (string) apply_filters( 'site_agent_openai_model', $model ) );
+	}
+
+	public static function api_key(): string {
+		$key = '';
+		if ( defined( 'SITE_AGENT_OPENAI_API_KEY' ) ) {
+			$key = (string) SITE_AGENT_OPENAI_API_KEY;
+		} elseif ( getenv( 'SITE_AGENT_OPENAI_API_KEY' ) ) {
+			$key = (string) getenv( 'SITE_AGENT_OPENAI_API_KEY' );
+		}
+		return trim( (string) apply_filters( 'site_agent_openai_api_key', $key ) );
+	}
+
+	public static function complete_turn(
+		string $system,
+		array $history,
+		string $prompt,
+		array $context,
+		array $tool_results = array()
+	): array|WP_Error {
+		$key = self::api_key();
+		if ( '' === $key ) {
+			return new WP_Error( 'openai_not_configured', __( 'No OpenAI API key is available through wp-config.php, the environment, or the site_agent_openai_api_key filter.', 'site-agent' ) );
+		}
+
+		$payload = array(
+			'model' => self::model(),
+			'store' => false,
+			'input' => self::messages( $system, $history, $prompt, $context, $tool_results ),
+			'text'  => array(
+				'format' => array(
+					'type'   => 'json_schema',
+					'name'   => 'site_agent_turn',
+					'strict' => false,
+					'schema' => self::schema(),
+				),
+			),
+		);
+
+		$response = self::request( $payload, $key );
+		if ( is_wp_error( $response ) ) {
+			// Some compatible endpoints/models may not accept structured output. Retry once with a strict JSON instruction.
+			unset( $payload['text'] );
+			$payload['input'][0]['content'] .= "\nReturn only valid JSON matching the requested Site Agent response shape.";
+			$response = self::request( $payload, $key );
+		}
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$text = self::extract_output_text( $response );
+		$data = json_decode( $text, true );
+		if ( ! is_array( $data ) ) {
+			return new WP_Error(
+				'provider_parse_error',
+				Site_Agent_Redactor::redact_string( __( 'The model returned an unreadable planning response.', 'site-agent' ) )
+			);
+		}
+
+		return self::normalize( $data );
+	}
+
+	private static function request( array $payload, string $key ): array|WP_Error {
+		$response = wp_remote_post(
+			self::ENDPOINT,
+			array(
+				'timeout' => 75,
+				'redirection' => 0,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $key,
+					'Content-Type'  => 'application/json',
+				),
+				'body' => wp_json_encode( Site_Agent_Redactor::redact( $payload ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+				'data_format' => 'body',
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return new WP_Error(
+				'provider_request_failed',
+				Site_Agent_Redactor::redact_string( $response->get_error_message() )
+			);
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = (string) wp_remote_retrieve_body( $response );
+		$data = json_decode( $body, true );
+		if ( $code < 200 || $code >= 300 || ! is_array( $data ) ) {
+			$message = is_array( $data ) ? (string) ( $data['error']['message'] ?? 'OpenAI request failed.' ) : 'OpenAI request failed.';
+			return new WP_Error(
+				'provider_http_error',
+				Site_Agent_Redactor::redact_string( $message ),
+				array( 'status' => $code )
+			);
+		}
+		return $data;
+	}
+
+	private static function messages( string $system, array $history, string $prompt, array $context, array $tool_results ): array {
+		$messages = array(
+			array(
+				'role'    => 'system',
+				'content' => $system,
+			),
+		);
+		foreach ( array_slice( $history, -12 ) as $message ) {
+			$role = (string) ( $message['role'] ?? '' );
+			if ( ! in_array( $role, array( 'user', 'assistant' ), true ) ) {
+				continue;
+			}
+			$messages[] = array(
+				'role'    => $role,
+				'content' => substr( Site_Agent_Redactor::redact_string( (string) ( $message['content'] ?? '' ) ), 0, 12000 ),
+			);
+		}
+
+		$input = array(
+			'question'           => Site_Agent_Redactor::redact_string( $prompt ),
+			'local_context'      => Site_Agent_Redactor::redact( $context ),
+			'validated_tool_data'=> Site_Agent_Redactor::redact( $tool_results ),
+		);
+		$messages[] = array(
+			'role'    => 'user',
+			'content' => wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+		);
+		return $messages;
+	}
+
+	private static function schema(): array {
+		return array(
+			'type'                 => 'object',
+			'additionalProperties' => false,
+			'required'             => array( 'answer', 'read_calls', 'write_actions', 'needs_clarification', 'clarification_question' ),
+			'properties'           => array(
+				'answer' => array( 'type' => 'string' ),
+				'read_calls' => array(
+					'type'     => 'array',
+					'maxItems' => 3,
+					'items'    => array(
+						'type'                 => 'object',
+						'additionalProperties' => false,
+						'required'             => array( 'name', 'args' ),
+						'properties'           => array(
+							'name' => array( 'type' => 'string' ),
+							'args' => array( 'type' => 'object', 'additionalProperties' => true ),
+						),
+					),
+				),
+				'write_actions' => array(
+					'type'     => 'array',
+					'maxItems' => 10,
+					'items'    => array(
+						'type'                 => 'object',
+						'additionalProperties' => false,
+						'required'             => array( 'name', 'args' ),
+						'properties'           => array(
+							'name' => array( 'type' => 'string' ),
+							'args' => array( 'type' => 'object', 'additionalProperties' => true ),
+						),
+					),
+				),
+				'needs_clarification' => array( 'type' => 'boolean' ),
+				'clarification_question' => array( 'type' => 'string' ),
+			),
+		);
+	}
+
+	private static function extract_output_text( array $response ): string {
+		if ( isset( $response['output_text'] ) && is_string( $response['output_text'] ) ) {
+			return $response['output_text'];
+		}
+		$text = '';
+		foreach ( (array) ( $response['output'] ?? array() ) as $item ) {
+			foreach ( (array) ( $item['content'] ?? array() ) as $content ) {
+				if ( isset( $content['text'] ) && is_string( $content['text'] ) ) {
+					$text .= $content['text'];
+				}
+			}
+		}
+		return trim( $text );
+	}
+
+	private static function normalize( array $data ): array {
+		return array(
+			'answer'                 => substr( Site_Agent_Redactor::redact_string( (string) ( $data['answer'] ?? '' ) ), 0, 30000 ),
+			'read_calls'             => array_slice( is_array( $data['read_calls'] ?? null ) ? $data['read_calls'] : array(), 0, 3 ),
+			'write_actions'          => array_slice( is_array( $data['write_actions'] ?? null ) ? $data['write_actions'] : array(), 0, 10 ),
+			'needs_clarification'    => ! empty( $data['needs_clarification'] ),
+			'clarification_question'=> substr( sanitize_text_field( (string) ( $data['clarification_question'] ?? '' ) ), 0, 1000 ),
+		);
+	}
+}

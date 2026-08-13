@@ -144,20 +144,21 @@ final class Site_Agent_OpenAI_Client {
 			return $response;
 		}
 
-		$turn = self::parse_response( $response );
+		$require_answer = ! empty( $tool_results );
+		$turn = self::parse_response( $response, $require_answer );
 		if ( is_wp_error( $turn ) && in_array( $turn->get_error_code(), array( 'provider_parse_error', 'provider_schema_error' ), true ) ) {
 			// Retry one malformed or incomplete planning object without duplicating the user submission.
 			$payload['input'][0]['content'] .= "\nYour previous response could not be validated. Return exactly one complete JSON object with non-empty answer text, plus read_calls, write_actions, needs_clarification, and clarification_question. Do not use Markdown fences or surrounding prose.";
 			$retry = self::request( $payload, $key );
 			if ( ! is_wp_error( $retry ) ) {
-				$turn = self::parse_response( $retry );
+				$turn = self::parse_response( $retry, $require_answer );
 			}
 		}
 
 		return $turn;
 	}
 
-	private static function parse_response( array $response ): array|WP_Error {
+	private static function parse_response( array $response, bool $require_answer = false ): array|WP_Error {
 		$status = sanitize_key( (string) ( $response['status'] ?? 'completed' ) );
 		if ( 'failed' === $status ) {
 			$message = (string) ( $response['error']['message'] ?? __( 'OpenAI could not generate a response. Check the configured model and try again.', 'site-agent' ) );
@@ -197,9 +198,13 @@ final class Site_Agent_OpenAI_Client {
 			return $data;
 		}
 
-		$validation = self::validate_turn( $data );
+		$validation = self::validate_turn( $data, $require_answer );
 		if ( is_wp_error( $validation ) ) {
-			$validation->add_data( self::diagnostics( $response, $text ) );
+			$diagnostics = self::diagnostics( $response, $text );
+			$diagnostics['planning_fields'] = array_values( array_map( 'sanitize_key', array_keys( $data ) ) );
+			$diagnostics['read_call_count'] = is_array( $data['read_calls'] ?? null ) ? count( $data['read_calls'] ) : null;
+			$diagnostics['write_action_count'] = is_array( $data['write_actions'] ?? null ) ? count( $data['write_actions'] ) : null;
+			$validation->add_data( $diagnostics );
 			return $validation;
 		}
 
@@ -269,18 +274,18 @@ final class Site_Agent_OpenAI_Client {
 		return '';
 	}
 
-	private static function validate_turn( array $data ): bool|WP_Error {
-		$required = array( 'answer', 'read_calls', 'write_actions', 'needs_clarification', 'clarification_question' );
+	private static function validate_turn( array $data, bool $require_answer = false ): bool|WP_Error {
+		$required = array( 'read_calls', 'write_actions', 'needs_clarification', 'clarification_question' );
 		foreach ( $required as $field ) {
 			if ( ! array_key_exists( $field, $data ) ) {
 				return new WP_Error( 'provider_schema_error', sprintf( __( 'OpenAI omitted the required planning field “%s”. Site Agent retried once; try again or choose a supported model.', 'site-agent' ), $field ) );
 			}
 		}
-		if ( ! is_string( $data['answer'] ) || ! is_array( $data['read_calls'] ) || ! is_array( $data['write_actions'] ) || ! is_bool( $data['needs_clarification'] ) || ! is_string( $data['clarification_question'] ) ) {
+		if ( ! is_array( $data['read_calls'] ) || ! is_array( $data['write_actions'] ) || ! is_bool( $data['needs_clarification'] ) || ! is_string( $data['clarification_question'] ) ) {
 			return new WP_Error( 'provider_schema_error', __( 'OpenAI returned planning fields in an unexpected format. Site Agent retried once; try again or choose a supported model.', 'site-agent' ) );
 		}
-		if ( '' === trim( $data['answer'] ) ) {
-			return new WP_Error( 'provider_schema_error', __( 'OpenAI returned an empty answer. Site Agent retried once; try a more specific question or choose a supported model.', 'site-agent' ) );
+		if ( array_key_exists( 'answer', $data ) && ! is_string( $data['answer'] ) ) {
+			return new WP_Error( 'provider_schema_error', __( 'OpenAI returned the answer in an unexpected format. Site Agent retried once; try again or choose a supported model.', 'site-agent' ) );
 		}
 		if ( $data['needs_clarification'] && '' === trim( $data['clarification_question'] ) ) {
 			return new WP_Error( 'provider_schema_error', __( 'OpenAI requested clarification without providing a question. Site Agent retried once; try again or choose a supported model.', 'site-agent' ) );
@@ -289,6 +294,12 @@ final class Site_Agent_OpenAI_Client {
 			if ( ! is_array( $call ) || ! is_string( $call['name'] ?? null ) || '' === trim( $call['name'] ) || ! is_array( $call['args'] ?? null ) ) {
 				return new WP_Error( 'provider_schema_error', __( 'OpenAI returned an invalid tool request. Nothing was executed; try again or choose a supported model.', 'site-agent' ) );
 			}
+		}
+		$answer = array_key_exists( 'answer', $data ) ? trim( $data['answer'] ) : '';
+		$has_intermediate_plan = ! empty( $data['read_calls'] ) || ! empty( $data['write_actions'] );
+		$has_clarification = $data['needs_clarification'] && '' !== trim( $data['clarification_question'] );
+		if ( '' === $answer && ( $require_answer || ( ! $has_intermediate_plan && ! $has_clarification ) ) ) {
+			return new WP_Error( 'provider_schema_error', __( 'OpenAI returned an empty answer without a valid tool plan. Site Agent retried once; try a more specific question or choose a supported model.', 'site-agent' ) );
 		}
 		return true;
 	}
@@ -385,7 +396,7 @@ final class Site_Agent_OpenAI_Client {
 			'additionalProperties' => false,
 			'required'             => array( 'answer', 'read_calls', 'write_actions', 'needs_clarification', 'clarification_question' ),
 			'properties'           => array(
-				'answer' => array( 'type' => 'string', 'minLength' => 1 ),
+				'answer' => array( 'type' => 'string' ),
 				'read_calls' => array(
 					'type'     => 'array',
 					'maxItems' => 3,

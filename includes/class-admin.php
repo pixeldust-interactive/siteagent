@@ -30,6 +30,8 @@ final class Site_Agent_Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 		add_action( 'admin_post_site_agent_save_roles', array( $this, 'save_roles' ) );
 		add_action( 'admin_post_site_agent_save_settings', array( $this, 'save_settings' ) );
+		add_action( 'admin_post_site_agent_save_api_key', array( $this, 'save_api_key' ) );
+		add_action( 'admin_post_site_agent_remove_api_key', array( $this, 'remove_api_key' ) );
 	}
 
 	public function menu(): void {
@@ -145,6 +147,15 @@ final class Site_Agent_Admin {
 	}
 
 	private function render_chat(): void {
+		if ( ! Site_Agent_OpenAI_Client::is_configured() ) {
+			?>
+			<section class="site-agent-setup" aria-labelledby="site-agent-setup-title">
+				<div><span class="site-agent-eyebrow"><?php esc_html_e( 'One step left', 'site-agent' ); ?></span><h2 id="site-agent-setup-title"><?php esc_html_e( 'Connect Site Agent to OpenAI', 'site-agent' ); ?></h2></div>
+				<p><?php esc_html_e( 'Add an API key so Site Agent can understand questions and plan changes. Your key is encrypted and is never shown again.', 'site-agent' ); ?></p>
+				<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=site-agent&tab=settings' ) ); ?>"><?php esc_html_e( 'Complete setup', 'site-agent' ); ?></a>
+			</section>
+			<?php
+		}
 		?>
 		<section class="site-agent-panel site-agent-chat-panel">
 			<div class="site-agent-chat-toolbar">
@@ -156,19 +167,20 @@ final class Site_Agent_Admin {
 				</select>
 				<button type="button" class="button" id="site-agent-new-chat"><?php esc_html_e( 'New conversation', 'site-agent' ); ?></button>
 			</div>
-			<div id="site-agent-chat" class="site-agent-chat" aria-live="polite">
-				<div class="site-agent-message is-agent">
-					<div class="site-agent-message-label"><?php esc_html_e( 'Site Agent', 'site-agent' ); ?></div>
-					<div class="site-agent-message-body"><?php esc_html_e( 'Ask what changed, why something exists, what may break, how the site is configured, or tell me a specific result you want.', 'site-agent' ); ?></div>
+			<div id="site-agent-chat" class="site-agent-chat" role="log" aria-live="polite" aria-relevant="additions">
+				<div class="site-agent-message is-agent"><div class="site-agent-message-label"><?php esc_html_e( 'Site Agent', 'site-agent' ); ?></div><div class="site-agent-message-body"><?php esc_html_e( 'What would you like to know or change?', 'site-agent' ); ?></div></div>
+				<div class="site-agent-starters" aria-label="<?php esc_attr_e( 'Suggested questions', 'site-agent' ); ?>">
+					<?php foreach ( array( __( 'What changed on my site this week?', 'site-agent' ), __( 'Is anything on my site unhealthy?', 'site-agent' ), __( 'Which pages need attention?', 'site-agent' ), __( 'What could break if I remove a plugin?', 'site-agent' ) ) as $starter ) : ?><button type="button" class="site-agent-starter" data-prompt="<?php echo esc_attr( $starter ); ?>"><?php echo esc_html( $starter ); ?></button><?php endforeach; ?>
 				</div>
 			</div>
 			<div id="site-agent-proposals"></div>
 			<form id="site-agent-chat-form" class="site-agent-chat-form">
 				<label class="screen-reader-text" for="site-agent-prompt"><?php esc_html_e( 'Question or instruction', 'site-agent' ); ?></label>
-				<textarea id="site-agent-prompt" rows="4" maxlength="12000" placeholder="<?php esc_attr_e( 'What changed on the homepage this week?', 'site-agent' ); ?>"></textarea>
+				<textarea id="site-agent-prompt" rows="3" maxlength="12000" aria-describedby="site-agent-composer-help" placeholder="<?php esc_attr_e( 'Message Site Agent…', 'site-agent' ); ?>"></textarea>
 				<div>
-					<button type="submit" class="button button-primary"><?php esc_html_e( 'Ask Site Agent', 'site-agent' ); ?></button>
-					<span id="site-agent-chat-status" class="site-agent-status"></span>
+					<span id="site-agent-composer-help" class="description"><?php esc_html_e( 'Enter sends · Shift+Enter adds a new line', 'site-agent' ); ?></span>
+					<button type="submit" class="button button-primary"><?php esc_html_e( 'Send', 'site-agent' ); ?></button>
+					<span id="site-agent-chat-status" class="site-agent-status" role="status" aria-live="polite"></span>
 				</div>
 			</form>
 		</section>
@@ -321,13 +333,25 @@ final class Site_Agent_Admin {
 			wp_die( esc_html__( 'You cannot manage Site Agent settings.', 'site-agent' ) );
 		}
 		$settings = get_option( 'site_agent_settings', array() );
+		$notice = isset( $_GET['connection'] ) ? sanitize_key( wp_unslash( $_GET['connection'] ) ) : '';
 		?>
 		<section class="site-agent-grid">
-			<div class="site-agent-panel">
+			<div class="site-agent-panel site-agent-wide">
 				<h2><?php esc_html_e( 'OpenAI connection', 'site-agent' ); ?></h2>
-				<p><strong><?php echo esc_html( Site_Agent_OpenAI_Client::is_configured() ? __( 'Configured', 'site-agent' ) : __( 'Not configured', 'site-agent' ) ); ?></strong></p>
-				<p><?php esc_html_e( 'Site Agent never stores an OpenAI API key in the WordPress database. Define SITE_AGENT_OPENAI_API_KEY in wp-config.php, provide it as an environment variable, or supply it through the site_agent_openai_api_key filter.', 'site-agent' ); ?></p>
-				<pre>define( 'SITE_AGENT_OPENAI_API_KEY', 'your-key-here' );</pre>
+				<?php if ( 'saved' === $notice ) : ?><div class="notice notice-success inline"><p><?php esc_html_e( 'OpenAI is connected. Site Agent is ready to chat.', 'site-agent' ); ?></p></div><?php endif; ?>
+				<?php if ( 'removed' === $notice ) : ?><div class="notice notice-success inline"><p><?php esc_html_e( 'The saved API key was removed.', 'site-agent' ); ?></p></div><?php endif; ?>
+				<?php if ( 'error' === $notice ) : ?><div class="notice notice-error inline"><p><?php echo esc_html( get_transient( 'site_agent_api_key_error_' . get_current_user_id() ) ?: __( 'The connection could not be saved.', 'site-agent' ) ); delete_transient( 'site_agent_api_key_error_' . get_current_user_id() ); ?></p></div><?php endif; ?>
+				<p class="site-agent-connection-state <?php echo Site_Agent_OpenAI_Client::is_configured() ? 'is-ready' : ''; ?>"><strong><?php echo esc_html( Site_Agent_OpenAI_Client::is_configured() ? __( 'Connected', 'site-agent' ) : __( 'Not connected', 'site-agent' ) ); ?></strong><?php if ( Site_Agent_OpenAI_Client::is_configured() ) : ?> · <?php echo esc_html( Site_Agent_OpenAI_Client::key_source() === 'server' ? __( 'Managed by the server', 'site-agent' ) : __( 'Encrypted in WordPress', 'site-agent' ) ); ?><?php endif; ?></p>
+				<p><?php esc_html_e( 'Create a secret API key in your OpenAI platform account. API access requires an active billing setup and is separate from a ChatGPT subscription.', 'site-agent' ); ?> <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open API key settings', 'site-agent' ); ?></a></p>
+				<?php if ( 'server' !== Site_Agent_OpenAI_Client::key_source() ) : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="site-agent-key-form">
+						<input type="hidden" name="action" value="site_agent_save_api_key"><?php wp_nonce_field( 'site_agent_save_api_key' ); ?>
+						<label for="site-agent-api-key"><strong><?php echo esc_html( Site_Agent_OpenAI_Client::is_configured() ? __( 'Replace API key', 'site-agent' ) : __( 'OpenAI API key', 'site-agent' ) ); ?></strong></label>
+						<div class="site-agent-key-row"><input type="password" id="site-agent-api-key" name="api_key" autocomplete="new-password" required placeholder="sk-…"><button class="button button-primary" type="submit"><?php esc_html_e( 'Validate and save', 'site-agent' ); ?></button></div>
+						<p class="description"><?php esc_html_e( 'The complete key is used only to validate the connection, then stored with authenticated encryption. It is never rendered back to the browser.', 'site-agent' ); ?></p>
+					</form>
+					<?php if ( Site_Agent_OpenAI_Client::is_configured() ) : ?><form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><?php wp_nonce_field( 'site_agent_remove_api_key' ); ?><input type="hidden" name="action" value="site_agent_remove_api_key"><button class="button button-link-delete" type="submit"><?php esc_html_e( 'Remove saved key', 'site-agent' ); ?></button></form><?php endif; ?>
+				<?php endif; ?>
 			</div>
 			<div class="site-agent-panel">
 				<h2><?php esc_html_e( 'Privacy boundary', 'site-agent' ); ?></h2>
@@ -429,16 +453,43 @@ final class Site_Agent_Admin {
 		exit;
 	}
 
+	public function save_api_key(): void {
+		if ( ! current_user_can( 'site_agent_manage' ) ) {
+			wp_die( esc_html__( 'You cannot manage the OpenAI connection.', 'site-agent' ) );
+		}
+		check_admin_referer( 'site_agent_save_api_key' );
+		$result = Site_Agent_OpenAI_Client::save_key( (string) wp_unslash( $_POST['api_key'] ?? '' ) );
+		if ( is_wp_error( $result ) ) {
+			set_transient( 'site_agent_api_key_error_' . get_current_user_id(), $result->get_error_message(), MINUTE_IN_SECONDS );
+			wp_safe_redirect( admin_url( 'admin.php?page=site-agent&tab=settings&connection=error' ) );
+			exit;
+		}
+		Site_Agent_Audit_Log::record( 'openai_connection_updated', array( 'source' => 'wordpress_encrypted' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=site-agent&tab=settings&connection=saved' ) );
+		exit;
+	}
+
+	public function remove_api_key(): void {
+		if ( ! current_user_can( 'site_agent_manage' ) ) {
+			wp_die( esc_html__( 'You cannot manage the OpenAI connection.', 'site-agent' ) );
+		}
+		check_admin_referer( 'site_agent_remove_api_key' );
+		Site_Agent_OpenAI_Client::remove_key();
+		Site_Agent_Audit_Log::record( 'openai_connection_removed' );
+		wp_safe_redirect( admin_url( 'admin.php?page=site-agent&tab=settings&connection=removed' ) );
+		exit;
+	}
+
 	private function tabs(): array {
 		$tabs = array( 'chat' => __( 'Chat', 'site-agent' ) );
 		if ( current_user_can( 'site_agent_inspect' ) ) {
+			$tabs['changes']     = __( 'History', 'site-agent' );
 			$tabs['knowledge']   = __( 'Knowledge', 'site-agent' );
-			$tabs['changes']     = __( 'Changes', 'site-agent' );
-			$tabs['diagnostics'] = __( 'Diagnostics', 'site-agent' );
 		}
 		if ( current_user_can( 'site_agent_manage' ) ) {
 			$tabs['roles']    = __( 'Roles', 'site-agent' );
 			$tabs['settings'] = __( 'Settings', 'site-agent' );
+			$tabs['diagnostics'] = __( 'Advanced', 'site-agent' );
 		}
 		return $tabs;
 	}

@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.2.0
+Stable tag: 0.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,7 +22,7 @@ This is an early developer build intended for controlled testing on backed-up si
 
 * No public chatbot.
 * No generic prompt proxy.
-* No OpenAI API key stored in the WordPress database.
+* OpenAI API keys saved in WordPress use authenticated encryption and are never rendered back to the browser.
 * Browser-cookie, REST nonce, origin/referrer, WordPress capability, and per-target permission checks.
 * Model output is planning input only. It cannot execute a write directly.
 * Every write is canonicalized, validated, risk-rated, reviewed, approved, and audited.
@@ -80,6 +80,9 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.2.1 =
+* Hardened OpenAI planning-response parsing, validation, retry, refusal/incomplete handling, and safe diagnostics.
 
 = 0.2.0 =
 * Added guided encrypted OpenAI API-key setup, validation, replacement, and removal.

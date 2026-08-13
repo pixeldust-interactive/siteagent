@@ -95,9 +95,23 @@ final class Site_Agent_Agent {
 		$tool_results = self::run_read_calls( (array) $turn['read_calls'] );
 		if ( ! empty( $tool_results ) ) {
 			$second = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, $tool_results );
-			if ( ! is_wp_error( $second ) ) {
-				$turn = $second;
+			if ( is_wp_error( $second ) ) {
+				$error_data = $second->get_error_data();
+				Site_Agent_Audit_Log::record(
+					'chat_provider_failed',
+					array(
+						'phase'       => 'after_read_tools',
+						'error_code'  => sanitize_key( $second->get_error_code() ),
+						'error'       => Site_Agent_Redactor::redact_string( $second->get_error_message() ),
+						'diagnostics' => is_array( $error_data ) ? Site_Agent_Redactor::redact( $error_data ) : array(),
+					),
+					'error',
+					get_current_user_id(),
+					$redacted_prompt
+				);
+				return $second;
 			}
+			$turn = $second;
 		}
 
 		$proposal = null;
@@ -115,6 +129,21 @@ final class Site_Agent_Agent {
 		$answer = $turn['needs_clarification'] && $turn['clarification_question']
 			? $turn['clarification_question']
 			: (string) $turn['answer'];
+		if ( '' === trim( $answer ) && null === $proposal ) {
+			$error = new WP_Error( 'provider_empty_answer', __( 'OpenAI completed the plan without a displayable answer. Nothing was executed; retry the request or choose a supported model.', 'site-agent' ) );
+			Site_Agent_Audit_Log::record(
+				'chat_provider_failed',
+				array(
+					'phase'      => 'final_answer',
+					'error_code' => 'provider_empty_answer',
+					'error'      => $error->get_error_message(),
+				),
+				'error',
+				get_current_user_id(),
+				$redacted_prompt
+			);
+			return $error;
+		}
 		$ids = self::store_turn(
 			$conversation_id,
 			$redacted_prompt,
@@ -200,7 +229,7 @@ final class Site_Agent_Agent {
 				'Do not claim certainty when hosting telemetry, external SaaS state, logs, or historical snapshots are unavailable.',
 				'Do not claim that a rollback exists until the server returns a reversible ledger entry.',
 				'Prefer the minimum necessary change. Ask for clarification when the target or intended result is ambiguous.',
-				'Always provide a useful non-empty answer, including when asking a clarification question or requesting a read tool.',
+				'Provide a useful non-empty answer for every final response. An intermediate read-tool plan may omit answer; after validated tool data is supplied, answer must be non-empty.',
 				'AI role focus: ' . self::ROLES[ $role ]['focus'],
 				'Read tools: ' . wp_json_encode( $catalog['read'] ),
 				'Write actions that may be proposed: ' . wp_json_encode( $catalog['write'] ),

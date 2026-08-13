@@ -29,13 +29,18 @@ $parse = new ReflectionMethod( Site_Agent_OpenAI_Client::class, 'parse_response'
 $parse->setAccessible( true );
 
 $cases = array(
-	'valid structured output'   => array( response( $valid ), false ),
+	'valid structured output'   => array( response( $valid ), false, false ),
 	'fenced JSON'               => array( response( "```json\n{$valid}\n```" ), false ),
 	'leading and trailing text' => array( response( "Planning result:\n{$valid}\nEnd." ), false ),
+	'read plan without answer'  => array( response( '{"read_calls":[{"name":"site.summary","args":{}}],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), false, false ),
+	'read plan as final answer' => array( response( '{"read_calls":[{"name":"site.summary","args":{}}],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), 'provider_schema_error', true ),
+	'write plan without answer' => array( response( '{"read_calls":[],"write_actions":[{"name":"option.update","args":{"name":"blogdescription","value":"Test"}}],"needs_clarification":false,"clarification_question":""}' ), false ),
 	'malformed JSON'            => array( response( '{"answer":' ), 'provider_parse_error' ),
 	'missing fields'            => array( response( '{"answer":"Hello"}' ), 'provider_schema_error' ),
+	'missing answer without plan'=> array( response( '{"read_calls":[],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), 'provider_schema_error' ),
+	'null answer with read plan'=> array( response( '{"answer":null,"read_calls":[{"name":"site.summary","args":{}}],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), 'provider_schema_error' ),
 	'empty answer'              => array( response( '{"answer":"","read_calls":[],"write_actions":[],"needs_clarification":false,"clarification_question":""}' ), 'provider_schema_error' ),
-	'clarification question'    => array( response( '{"answer":"I need the target page before proposing a change.","read_calls":[],"write_actions":[],"needs_clarification":true,"clarification_question":"Which page should I update?"}' ), false ),
+	'clarification question'    => array( response( '{"answer":"","read_calls":[],"write_actions":[],"needs_clarification":true,"clarification_question":"Which page should I update?"}' ), false ),
 	'missing clarification'     => array( response( '{"answer":"I need more detail.","read_calls":[],"write_actions":[],"needs_clarification":true,"clarification_question":""}' ), 'provider_schema_error' ),
 	'provider refusal'          => array( array( 'status' => 'completed', 'output' => array( array( 'content' => array( array( 'type' => 'refusal', 'refusal' => 'not included in diagnostics' ) ) ) ) ), 'provider_refusal' ),
 	'incomplete response'       => array( array( 'status' => 'incomplete', 'incomplete_details' => array( 'reason' => 'max_output_tokens' ), 'output' => array() ), 'provider_incomplete_response' ),
@@ -45,7 +50,8 @@ $cases = array(
 $failures = 0;
 foreach ( $cases as $name => $case ) {
 	list( $fixture, $expected_error ) = $case;
-	$result = $parse->invoke( null, $fixture );
+	$require_answer = $case[2] ?? false;
+	$result = $parse->invoke( null, $fixture, $require_answer );
 	$actual_error = is_wp_error( $result ) ? $result->get_error_code() : false;
 	if ( $actual_error !== $expected_error ) {
 		$failures++;

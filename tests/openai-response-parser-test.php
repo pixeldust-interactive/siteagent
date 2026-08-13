@@ -43,7 +43,8 @@ $cases = array(
 );
 
 $failures = 0;
-foreach ( $cases as $name => array( $fixture, $expected_error ) ) {
+foreach ( $cases as $name => $case ) {
+	list( $fixture, $expected_error ) = $case;
 	$result = $parse->invoke( null, $fixture );
 	$actual_error = is_wp_error( $result ) ? $result->get_error_code() : false;
 	if ( $actual_error !== $expected_error ) {

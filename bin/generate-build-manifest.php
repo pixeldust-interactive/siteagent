@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 
+function site_agent_manifest_hash( string $path ): string {
+	$contents = file_get_contents( $path );
+	if ( false === $contents ) {
+		throw new RuntimeException( 'Could not read manifest source: ' . $path );
+	}
+
+	return hash( 'sha256', str_replace( array( "\r\n", "\r" ), "\n", $contents ) );
+}
+
 $root = dirname( __DIR__ );
 $check = in_array( '--check', $argv, true );
 $version_source = (string) file_get_contents( $root . '/site-agent.php' );
@@ -14,7 +23,7 @@ $files = array();
 foreach ( $paths as $path ) {
 	$absolute = $root . '/' . $path;
 	if ( is_file( $absolute ) ) {
-		$files[ $path ] = hash_file( 'sha256', $absolute );
+		$files[ $path ] = site_agent_manifest_hash( $absolute );
 		continue;
 	}
 	$iterator = new RecursiveIteratorIterator(
@@ -25,7 +34,7 @@ foreach ( $paths as $path ) {
 			continue;
 		}
 		$relative = str_replace( '\\', '/', substr( $file->getPathname(), strlen( $root ) + 1 ) );
-		$files[ $relative ] = hash_file( 'sha256', $file->getPathname() );
+		$files[ $relative ] = site_agent_manifest_hash( $file->getPathname() );
 	}
 }
 ksort( $files, SORT_STRING );
@@ -38,11 +47,12 @@ $manifest = json_encode(
 		'files'      => $files,
 	),
 	JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-) . PHP_EOL;
+) . "\n";
 $target = $root . '/build-manifest.json';
 
 if ( $check ) {
 	$current = is_file( $target ) ? (string) file_get_contents( $target ) : '';
+	$current = str_replace( array( "\r\n", "\r" ), "\n", $current );
 	if ( ! hash_equals( hash( 'sha256', $manifest ), hash( 'sha256', $current ) ) ) {
 		fwrite( STDERR, "build-manifest.json is stale; run php bin/generate-build-manifest.php and commit the result." . PHP_EOL );
 		exit( 1 );

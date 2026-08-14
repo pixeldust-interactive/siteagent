@@ -6,6 +6,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Site_Agent_Build_Integrity {
 	private const MANIFEST = 'build-manifest.json';
 
+	private static function file_hash( string $path ) {
+		$contents = file_get_contents( $path );
+		if ( ! is_string( $contents ) ) {
+			return false;
+		}
+
+		return hash( 'sha256', str_replace( array( "\r\n", "\r" ), "\n", $contents ) );
+	}
+
 	public static function status(): array {
 		$path = SITE_AGENT_DIR . self::MANIFEST;
 		if ( ! is_readable( $path ) ) {
@@ -21,7 +30,7 @@ final class Site_Agent_Build_Integrity {
 			return array(
 				'verified'        => false,
 				'reason'          => 'manifest_invalid',
-				'manifest_sha256' => hash_file( 'sha256', $path ) ?: '',
+				'manifest_sha256' => self::file_hash( $path ) ?: '',
 			);
 		}
 
@@ -33,7 +42,7 @@ final class Site_Agent_Build_Integrity {
 				continue;
 			}
 			$file = SITE_AGENT_DIR . str_replace( '/', DIRECTORY_SEPARATOR, $relative );
-			$actual = is_file( $file ) ? hash_file( 'sha256', $file ) : false;
+			$actual = is_file( $file ) ? self::file_hash( $file ) : false;
 			if ( ! is_string( $actual ) || ! hash_equals( (string) $expected, $actual ) ) {
 				$mismatches[] = $relative;
 			}
@@ -44,7 +53,7 @@ final class Site_Agent_Build_Integrity {
 			'reason'          => empty( $mismatches ) ? 'verified' : 'file_mismatch',
 			'release_id'      => sanitize_text_field( (string) ( $data['release_id'] ?? '' ) ),
 			'version'         => sanitize_text_field( (string) ( $data['version'] ?? '' ) ),
-			'manifest_sha256' => hash_file( 'sha256', $path ) ?: '',
+			'manifest_sha256' => self::file_hash( $path ) ?: '',
 			'file_count'      => count( $data['files'] ),
 			'mismatches'      => array_slice( $mismatches, 0, 20 ),
 		);

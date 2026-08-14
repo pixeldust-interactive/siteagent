@@ -34,7 +34,13 @@ if ( '' !== $site_agent_uat_mu_target && wp_normalize_path( __FILE__ ) !== wp_no
 					wp_die( esc_html__( 'A different Site Agent UAT fixture already exists. Nothing was overwritten.', 'site-agent' ) );
 				}
 			}
-			if ( ! wp_mkdir_p( dirname( $site_agent_uat_mu_target ) ) || ! {ÚÚ$z{-®éÜj×n',
+			if ( ! wp_mkdir_p( dirname( $site_agent_uat_mu_target ) ) || ! copy( __FILE__, $site_agent_uat_mu_target ) ) {
+				wp_die( esc_html__( 'WordPress could not install the Site Agent UAT fixture as a must-use plugin.', 'site-agent' ) );
+			}
+		}
+	);
+	add_action(
+		'activated_plugin',
 		static function ( string $plugin ) use ( $site_agent_uat_mu_target ): void {
 			if ( plugin_basename( __FILE__ ) === $plugin && file_exists( $site_agent_uat_mu_target ) ) {
 				deactivate_plugins( $plugin, true );

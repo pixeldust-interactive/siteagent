@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Site Agent UAT Provider Fixture
  * Description: Host-locked, no-network provider fault injection for Site Agent UAT.
- * Version: 0.1.1
+ * Version: 0.2.1
  * Author: Pixeldust Interactive
  */
 
@@ -25,7 +25,11 @@ if ( '' !== $site_agent_uat_mu_target && wp_normalize_path( __FILE__ ) !== wp_no
 			if ( file_exists( $site_agent_uat_mu_target ) ) {
 				$current_hash = hash_file( 'sha256', $site_agent_uat_mu_target );
 				$source_hash = hash_file( 'sha256', __FILE__ );
-				$allowed_previous = array( '9ed08db9b9fa48128fb65b573b1796984c019972ec8862fe51d1d8edd3c8c622' );
+				$allowed_previous = array(
+					'9ed08db9b9fa48128fb65b573b1796984c019972ec8862fe51d1d8edd3c8c622',
+					'665854d2029ca70a537b344dcb3e9263a2dec068e0426884f553ff448f1ea3b8',
+					'c5d6fc68b8e8224985cd5d6bd66162ab163a74c9d651a9db11910de3d9a7507c',
+				);
 				if ( ! hash_equals( $source_hash, $current_hash ) && ! in_array( strtolower( $current_hash ), $allowed_previous, true ) ) {
 					wp_die( esc_html__( 'A different Site Agent UAT fixture already exists. Nothing was overwritten.', 'site-agent' ) );
 				}
@@ -64,6 +68,7 @@ final class Site_Agent_UAT_Provider_Fixture {
 		'clarification',
 		'proposal',
 		'read_tool_roundtrip',
+		'sa16_homepage_flow',
 		'timeout',
 	);
 
@@ -137,9 +142,10 @@ final class Site_Agent_UAT_Provider_Fixture {
 			'scenario'      => $scenario,
 			'last_scenario' => '',
 			'consumed'      => false,
-			'request_count' => 0,
-			'selected_gmt'  => gmdate( 'c' ),
-			'events'        => array(),
+			'request_count'    => 0,
+			'evidence_verified' => false,
+			'selected_gmt'     => gmdate( 'c' ),
+			'events'           => array(),
 		);
 		set_transient( self::TRANSIENT, $state, self::TTL );
 		return rest_ensure_response( self::public_state( $state ) );
@@ -180,7 +186,13 @@ final class Site_Agent_UAT_Provider_Fixture {
 		$state['request_count']++;
 		$step = (int) $state['request_count'];
 		$scenario = (string) $state['scenario'];
-		$result = self::scenario_result( $scenario, $step );
+		$result = self::scenario_result( $scenario, $step, (string) ( $args['body'] ?? '' ), $state );
+		$evidence_error = is_wp_error( $result ) && 'site_agent_uat_evidence_missing' === $result->get_error_code();
+		if ( $evidence_error ) {
+			$state['request_count'] = max( 0, $state['request_count'] - 1 );
+		} elseif ( 'sa16_homepage_flow' === $scenario && 2 === $step ) {
+			$state['evidence_verified'] = true;
+		}
 		$state['events'][] = array(
 			'at_gmt'      => gmdate( 'c' ),
 			'scenario'    => $scenario,
@@ -190,7 +202,7 @@ final class Site_Agent_UAT_Provider_Fixture {
 		);
 		$state['events'] = array_slice( $state['events'], -20 );
 
-		if ( self::is_terminal_step( $scenario, $step ) ) {
+		if ( ! $evidence_error && self::is_terminal_step( $scenario, $step ) ) {
 			$state['last_scenario'] = $scenario;
 			$state['scenario'] = '';
 			$state['consumed'] = true;
@@ -201,7 +213,7 @@ final class Site_Agent_UAT_Provider_Fixture {
 		return $result;
 	}
 
-	private static function scenario_result( string $scenario, int $step ): array|WP_Error {
+	private static function scenario_result( string $scenario, int $step, string $request_body = '', array $state = array() ): array|WP_Error {
 		$valid = self::turn_json( 'Fixture valid answer. Nothing was changed.' );
 
 		switch ( $scenario ) {
@@ -228,6 +240,81 @@ final class Site_Agent_UAT_Provider_Fixture {
 					return self::response_envelope( wp_json_encode( array( 'answer' => '', 'read_calls' => array( array( 'name' => 'plugins.list', 'args' => array() ) ), 'write_actions' => array(), 'needs_clarification' => false, 'clarification_question' => '' ) ) );
 				}
 				return self::response_envelope( self::turn_json( 'Fixture read-tool answer completed. Nothing was changed.' ) );
+			case 'sa16_homepage_flow':
+				if ( 1 === $step ) {
+					return self::response_envelope(
+						(string) wp_json_encode(
+							array(
+								'answer'                 => 'I found the configured homepage and its editing system.',
+								'read_calls'             => array(
+									array(
+										'name' => 'site.search',
+										'args' => array(
+											'query' => 'page_on_front WP Maisy home Twenty Twenty-Five WordPress editor',
+											'limit' => 12,
+										),
+									),
+									array( 'name' => 'content.get', 'args' => array( 'post_id' => 9 ) ),
+								),
+								'write_actions'          => array(),
+								'needs_clarification'    => false,
+								'clarification_question' => '',
+							),
+							JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+						)
+					);
+				}
+				if ( 2 === $step ) {
+					$required_evidence = array(
+						'validated_tool_data',
+						'site.search',
+						'page_on_front',
+						'front_page_id',
+						'WP Maisy',
+						'Twenty Twenty-Five',
+						'content.get',
+					);
+					if ( ! self::contains_all( $request_body, $required_evidence ) ) {
+						return new WP_Error( 'site_agent_uat_evidence_missing', 'The SA-16 fixture did not receive the required live homepage and editor evidence.' );
+					}
+					return self::response_envelope(
+						(string) wp_json_encode(
+							array(
+								'answer'                 => 'I found the configured homepage and its editing system.',
+								'read_calls'             => array(),
+								'write_actions'          => array(),
+								'needs_clarification'    => true,
+								'clarification_question' => 'I found your homepage, WP Maisy. It uses the WordPress editor. What should the new section help visitors understand or do? For example: help visitors understand the eight focused tools and choose the right next step.',
+							),
+							JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+						)
+					);
+				}
+				if ( empty( $state['evidence_verified'] ) || false === stripos( $request_body, 'Help visitors understand the eight focused WordPress tools and choose the right next step.' ) ) {
+					return new WP_Error( 'site_agent_uat_evidence_missing', 'The SA-16 fixture requires the approved plain-language content goal before preparing a proposal.' );
+				}
+				return self::response_envelope(
+					(string) wp_json_encode(
+						array(
+							'answer'                 => 'I prepared a reversible draft preview for a new section below the introduction. It explains the eight focused WordPress tools and helps visitors choose a next step. Nothing changes on the homepage unless you approve the exact preview.',
+							'read_calls'             => array(),
+							'write_actions'          => array(
+								array(
+									'name' => 'post.create',
+									'args' => array(
+										'post_type'    => 'page',
+										'post_status'  => 'draft',
+										'post_title'   => 'UAT preview - homepage tools section',
+										'post_content' => '<section><h2>Find the right WordPress tool faster</h2><p>Explore eight focused tools for site administration, performance, workflow verification, search metadata, publishing, plugin-removal risk, operating knowledge, and targeted rollback.</p><p><a href="/site-agent/">Start with Site Agent</a></p></section>',
+									),
+								),
+							),
+							'needs_clarification'    => false,
+							'clarification_question' => '',
+						),
+						JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+					)
+				);
 			case 'timeout':
 				return new WP_Error( 'http_request_failed', 'cURL error 28: Operation timed out after the fixture safe window.' );
 		}
@@ -236,8 +323,20 @@ final class Site_Agent_UAT_Provider_Fixture {
 	}
 
 	private static function is_terminal_step( string $scenario, int $step ): bool {
+		if ( 'sa16_homepage_flow' === $scenario ) {
+			return $step >= 3;
+		}
 		$two_step = array( 'malformed_then_valid', 'empty_exhausted', 'null_exhausted', 'missing_exhausted', 'read_tool_roundtrip' );
 		return ! in_array( $scenario, $two_step, true ) || $step >= 2;
+	}
+
+	private static function contains_all( string $haystack, array $needles ): bool {
+		foreach ( $needles as $needle ) {
+			if ( false === stripos( $haystack, (string) $needle ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private static function turn_json( string $answer ): string {
@@ -289,32 +388,33 @@ final class Site_Agent_UAT_Provider_Fixture {
 			'scenario'      => '',
 			'last_scenario' => '',
 			'consumed'      => false,
-			'request_count' => 0,
-			'selected_gmt'  => '',
-			'consumed_gmt'  => '',
-			'events'        => array(),
+			'request_count'    => 0,
+			'evidence_verified' => false,
+			'selected_gmt'     => '',
+			'consumed_gmt'     => '',
+			'events'           => array(),
 		);
 	}
 
 	private static function public_state( array $state ): array {
 		return array(
-			'fixture_version' => '0.1.1',
-			'source_sha256'   => hash_file( 'sha256', __FILE__ ),
-			'install_path'    => 'wp-content/mu-plugins/site-agent-uat-provider-fixture.php',
-			'authorized_host' => self::authorized_host(),
-			'enabled'         => (bool) $state['enabled'],
-			'scenario'        => (string) $state['scenario'],
-			'last_scenario'   => (string) $state['last_scenario'],
-			'consumed'        => (bool) $state['consumed'],
-			'request_count'   => (int) $state['request_count'],
-			'selected_gmt'    => (string) $state['selected_gmt'],
-			'consumed_gmt'    => (string) $state['consumed_gmt'],
-			'events'          => (array) $state['events'],
-			'scenarios'       => self::SCENARIOS,
-			'network_policy'  => 'All api.openai.com requests are preempted locally while enabled.',
+			'fixture_version'   => '0.2.1',
+			'source_sha256'     => hash_file( 'sha256', __FILE__ ),
+			'install_path'      => 'wp-content/mu-plugins/site-agent-uat-provider-fixture.php',
+			'authorized_host'   => self::authorized_host(),
+			'enabled'           => (bool) $state['enabled'],
+			'scenario'          => (string) $state['scenario'],
+			'last_scenario'     => (string) $state['last_scenario'],
+			'consumed'          => (bool) $state['consumed'],
+			'request_count'     => (int) $state['request_count'],
+			'evidence_verified' => (bool) $state['evidence_verified'],
+			'selected_gmt'      => (string) $state['selected_gmt'],
+			'consumed_gmt'      => (string) $state['consumed_gmt'],
+			'events'            => (array) $state['events'],
+			'scenarios'         => self::SCENARIOS,
+			'network_policy'    => 'All api.openai.com requests are preempted locally while enabled.',
 		);
 	}
 }
 
 Site_Agent_UAT_Provider_Fixture::boot();
-

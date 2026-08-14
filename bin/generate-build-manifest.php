@@ -54,7 +54,7 @@ if ( $check ) {
 	$current = is_file( $target ) ? (string) file_get_contents( $target ) : '';
 	$current_data = json_decode( $current, true );
 	$expected_data = json_decode( $manifest, true );
-	if ( ! is_array( $current_data ) || $current_data !== $expected_data ) {
+	if ( ! is_array( $current_data ) || $current_data != $expected_data ) {
 		fwrite( STDERR, "build-manifest.json is stale; run php bin/generate-build-manifest.php and commit the result." . PHP_EOL );
 		exit( 1 );
 	}

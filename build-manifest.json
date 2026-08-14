@@ -1,13 +1,13 @@
 {
     "schema": 1,
-    "release_id": "site-agent-0.3.0",
-    "version": "0.3.0",
+    "release_id": "site-agent-0.3.4",
+    "version": "0.3.4",
     "files": {
-        "assets/admin.css": "53cb5e283fc4598bd187bb3d3b7588219c75f730c6b673702fcc1229df0dbe44",
-        "assets/admin.js": "7f2628af0cf64321b815769cc59ccf165b4b31c47810465172170871e5b79096",
+        "assets/admin.css": "1772269ba979fdedbaf2bdaf77e2e8df9ea70ad4c76e3d27c21cab66ce3f0a70",
+        "assets/admin.js": "dbc2a6153b82f5b11810d22e6b411cea073542ee5ebe30b24e70aebc98735f17",
         "includes/class-action-registry.php": "9362ad13d944ea034c06813b4d24fe644756530b66e2ba89193889104fd15e8b",
         "includes/class-activator.php": "ffabc0dccfe3d1cc3a69f1e7ad39ab4bd1cbce64f7b26f82b4de87124977d6ce",
-        "includes/class-admin.php": "40066cd839d08a39c67e319652c52412cec5c6512374754762d7aa4a0358863c",
+        "includes/class-admin.php": "72588c391e10e43ce86562c7eea38e4e026107119313414f9e6a63b9a5b9b1b9",
         "includes/class-agent.php": "35300d0e3c96b49a7314a85564f31b7cc7d0d392e7bb5e485311cc7dd9780884",
         "includes/class-approval-service.php": "92b8a7661da4cbce519cce2f520fe8c1751b340453877aa8e8d89b525c02780b",
         "includes/class-audit-log.php": "b80977f39b4fd9f62b8a48df57c791b831cacd30bbd95d7871da4cd639438634",
@@ -16,7 +16,7 @@
         "includes/class-codec.php": "66d6ac8c9cb3cfff418b919af459df908a579ccbf4e25ee9fd5dd6751655fba1",
         "includes/class-database.php": "bf3a6baceed46322b8201664e260963ec06ccdfc8a8e158e1a6f3554c3905d8e",
         "includes/class-diagnostics.php": "ecbcd375f16c78c3d8358cfe1ac24afddc271c89cf54c4b3eb3b494d823891c9",
-        "includes/class-indexer.php": "720622351d413b29640d5413c5f04e2736cce185a29be5acbd1a8a4bd04c022d",
+        "includes/class-indexer.php": "200a70be0aa43201c75b0d472628d96f9bb8bea538160fb0f12c213a96793a90",
         "includes/class-ledger.php": "1055e7b138b9980682f39cf20e8b5297404e361ef24b7d672444b8a1778b72a5",
         "includes/class-openai-client.php": "c08c9bd9d58ce48853aa890072592516b6b031630879e7a06d8d84a08fba3e64",
         "includes/class-plugin.php": "03a68ac5166d487af072b2edf04f6e3609df42e364338300e1832796f2f4264f",
@@ -25,10 +25,10 @@
         "includes/class-redactor.php": "a1db0da9971044440db9313d8dd06028f9d3dad1c3b8f1397467e42c5d92342d",
         "includes/class-rest-controller.php": "cb8a25d52c4ff0d608c9bf0301bc52b920396d759876a4c401d9ee36682ad91b",
         "includes/class-retention.php": "3264978ed54ddd275a38bcc7d54a22a1a92c10befdaa75ae12b82d2fa730c407",
-        "includes/class-retriever.php": "dca33f9021cf057b98592b9a6361886f0724ac3ad5d037c7ddcf3953df2a5be9",
-        "README.md": "40609b8dd4a57e20cd7cbe3c30d27ae544ac186deae8694f87c43e0b9bf8ffd8",
-        "readme.txt": "627ec92c69abca6d39e1fa19696bf983a6d69dadd4c5e7e5284262dea99430e9",
-        "site-agent.php": "64972b5637148d5506180beffac89a8136173a3fded18ba7aee341e114494b41",
+        "includes/class-retriever.php": "e6063bec3b97f1f114386ff45da64983eff289b76bf4288ad7bc1b5efb35b8ab",
+        "README.md": "b18bf1e228c28a5353af97b5592ead465152604de1fa8a01ec3fce9e6d123163",
+        "readme.txt": "15687d2833e712e3d20e51a7475ff599b89019325c259bfbd4b1208beb856d7a",
+        "site-agent.php": "42daa1751681fcf290dbbdfd8d9853920232d6c9cfe5c7fb50343776986162d0",
         "uninstall.php": "44b7c04c7156913ec74cf4ff2ebe2b23e8622fd36d66dddfa9355426e8572ff3"
     }
 }

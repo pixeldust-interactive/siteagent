@@ -172,10 +172,7 @@ final class Site_Agent_Indexer {
 			$id  = (int) $row['ID'];
 			$max = max( $max, $id );
 
-			$content = wp_strip_all_tags(
-				strip_shortcodes( (string) $row['post_content'] )
-			);
-			$content = preg_replace( '/\s+/', ' ', $content ) ?? $content;
+			$content = self::readable_post_content( (string) $row['post_content'] );
 
 			$summary = array(
 				'status'  => sanitize_key( (string) $row['post_status'] ),
@@ -207,6 +204,23 @@ final class Site_Agent_Indexer {
 			'last_id' => $max,
 			'done'    => count( $rows ) < $limit,
 		);
+	}
+
+	private static function readable_post_content( string $content ): string {
+		$content = preg_replace( '/<(script|style|nav|footer|aside)\b[^>]*>.*?<\/\1>/is', ' ', $content ) ?? $content;
+		$content = preg_replace( '/<!--.*?-->/s', ' ', $content ) ?? $content;
+		$content = preg_replace(
+			'/<\/?(?:address|article|blockquote|br|dd|div|dl|dt|fieldset|figcaption|figure|h[1-6]|hr|li|main|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul)\b[^>]*>/i',
+			' ',
+			$content
+		) ?? $content;
+		$content = preg_replace( '/\]\s*\[/', '] [', $content ) ?? $content;
+		$content = strip_shortcodes( $content );
+		$content = wp_strip_all_tags( $content );
+		$content = html_entity_decode( $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		$content = preg_replace( '/\s+/u', ' ', $content ) ?? $content;
+
+		return trim( $content );
 	}
 
 	private static function excluded_post_types(): array {

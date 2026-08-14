@@ -289,12 +289,16 @@
 		const status = document.getElementById('site-agent-index-status');
 		const progress = document.getElementById('site-agent-index-progress');
 		const total = document.getElementById('site-agent-index-total');
+		const updated = document.getElementById('site-agent-index-updated');
+		const heading = document.getElementById('site-agent-index-heading');
+		const guidance = document.getElementById('site-agent-index-guidance');
+		const callout = button.closest('.site-agent-index-callout');
 
 		button.addEventListener('click', async () => {
 			button.disabled = true;
 			progress.hidden = false;
 			progress.removeAttribute('value');
-			setStatus(status, 'Starting a new index generation…');
+			setStatus(status, 'Preparing the site scan…');
 			try {
 				let state = await api('/index/start', { method: 'POST', body: {} });
 				let calls = 0;
@@ -303,13 +307,19 @@
 					calls += 1;
 					progress.value = Number(state.processed || 0);
 					progress.max = Math.max(Number(state.processed || 0) + 100, 1);
-					setStatus(status, `${state.message} Processed: ${Number(state.processed || 0).toLocaleString()}`);
+					setStatus(status, `Scanning your site: ${Number(state.processed || 0).toLocaleString()} items found.`);
 					if (calls > 100000) throw new Error('Index safety stop: too many batches.');
 				} while (!state.done);
 				progress.value = 1;
 				progress.max = 1;
-				setStatus(status, `Knowledge index rebuilt. Processed ${Number(state.processed || 0).toLocaleString()} records.`);
+				setStatus(status, `Site knowledge is ready. ${Number(state.processed || 0).toLocaleString()} items are available to Site Agent.`);
 				if (total) total.textContent = Number(state.processed || 0).toLocaleString();
+				if (updated) updated.textContent = 'Just now';
+				if (heading) heading.textContent = 'Site knowledge is ready';
+				if (guidance) guidance.textContent = 'Refresh after important content, plugin, or settings changes.';
+				button.textContent = 'Refresh site knowledge';
+				callout?.classList.remove('is-needed');
+				callout?.classList.add('is-ready');
 			} catch (error) {
 				setStatus(status, error.message, true);
 			} finally {
@@ -317,6 +327,126 @@
 				window.setTimeout(() => { progress.hidden = true; }, 1500);
 			}
 		});
+	}
+
+	function knowledgeTypeLabel(item) {
+		const type = String(item.type || '').toLowerCase();
+		const subtype = String(item.subtype || '').replace(/[_-]+/g, ' ').trim();
+		if (type === 'post') {
+			if (subtype === 'page') return 'Page';
+			if (subtype === 'post') return 'Post';
+			return subtype ? subtype.replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Content';
+		}
+		const labels = {
+			plugin: 'Plugin',
+			theme: 'Theme',
+			form: 'Form',
+			builder: 'Editing system',
+			role: 'WordPress role',
+			cron: 'Scheduled task',
+			option: 'Site setting',
+			database: 'Database information',
+			system: 'WordPress information',
+		};
+		return labels[type] || (type ? type.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Site information');
+	}
+
+	function readableKnowledgeText(value) {
+		return String(value || '')
+			.replace(/<(script|style|nav|footer|aside)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+			.replace(/<!--[\s\S]*?-->/g, ' ')
+			.replace(/<\/?(?:address|article|blockquote|br|dd|div|dl|dt|fieldset|figcaption|figure|h[1-6]|hr|li|main|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul)\b[^>]*>/gi, ' ')
+			.replace(/<[^>]*>/g, ' ')
+			.replace(/&nbsp;/gi, ' ')
+			.replace(/&amp;/gi, '&')
+			.replace(/&quot;/gi, '"')
+			.replace(/&#039;/gi, "'")
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
+	function knowledgeQueryTerms(query) {
+		return String(query || '')
+			.toLowerCase()
+			.replace(/[^a-z0-9_-]+/g, ' ')
+			.trim()
+			.split(/\s+/)
+			.filter((term) => term.length >= 3);
+	}
+
+	function boundedKnowledgeExcerpt(text, matchIndex = -1, matchLength = 0) {
+		const limit = 260;
+		if (text.length <= limit) return text;
+		let start = matchIndex >= 0 ? Math.max(0, matchIndex - 105) : 0;
+		let end = Math.min(text.length, start + limit - 2);
+		if (matchIndex >= 0 && matchIndex + matchLength > end) {
+			end = Math.min(text.length, matchIndex + matchLength + 105);
+			start = Math.max(0, end - (limit - 2));
+		}
+		if (start > 0) {
+			const firstSpace = text.indexOf(' ', start);
+			if (firstSpace >= 0 && firstSpace < end) start = firstSpace + 1;
+		}
+		if (end < text.length) {
+			const lastSpace = text.lastIndexOf(' ', end);
+			if (lastSpace > start) end = lastSpace;
+		}
+		return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
+	}
+
+	function knowledgeExcerpt(summary, query) {
+		const candidates = [];
+		if (typeof summary === 'string') candidates.push(readableKnowledgeText(summary));
+		if (summary && typeof summary === 'object') {
+			['excerpt', 'description', 'content', 'answer', 'label', 'name', 'value'].forEach((key) => {
+				if (typeof summary[key] === 'string') candidates.push(readableKnowledgeText(summary[key]));
+			});
+			Object.entries(summary)
+				.filter(([key, value]) => !['url', 'id', 'object_id', 'status'].includes(key) && typeof value === 'string')
+				.forEach(([, value]) => candidates.push(readableKnowledgeText(value)));
+		}
+		const readable = candidates.filter(Boolean);
+		const terms = knowledgeQueryTerms(query);
+		for (const text of readable) {
+			const lower = text.toLowerCase();
+			let matchIndex = -1;
+			let matchTerm = '';
+			for (const term of terms) {
+				const index = lower.indexOf(term);
+				if (index >= 0 && (matchIndex < 0 || index < matchIndex)) {
+					matchIndex = index;
+					matchTerm = term;
+				}
+			}
+			if (matchIndex >= 0) return boundedKnowledgeExcerpt(text, matchIndex, matchTerm.length);
+		}
+		if (terms.length) {
+			const phrase = String(query || '').trim().slice(0, 80);
+			return `This item matched by its title or site metadata for “${phrase}”. Open Technical details for more information.`;
+		}
+		if (readable.length) return boundedKnowledgeExcerpt(readable[0]);
+		return 'Site Agent has technical information for this item. Open Technical details to review it.';
+	}
+
+	function knowledgeTechnicalDetails(item) {
+		const details = el('details', 'site-agent-technical-details');
+		details.append(el('summary', '', 'Technical details'));
+		const list = el('dl', 'site-agent-technical-list');
+		[
+			['Record type', item.type || 'Not available'],
+			['Content subtype', item.subtype || 'Not available'],
+			['Internal ID', item.object_id ?? 'Not available'],
+			['Last indexed', item.modified_gmt || 'Not available'],
+			...(item.raw_title ? [['Stored title', item.raw_title]] : []),
+		].forEach(([label, value]) => {
+			list.append(el('dt', '', label), el('dd', '', value));
+		});
+		details.append(list);
+		const raw = el('details', 'site-agent-raw-details');
+		raw.append(el('summary', '', 'Raw indexed data'));
+		raw.append(el('pre', '', JSON.stringify(item.summary || {}, null, 2)));
+		details.append(raw);
+		return details;
 	}
 
 	function setupSearch() {
@@ -332,15 +462,24 @@
 				const result = await api(`/search?q=${encodeURIComponent(query.value || '')}&limit=20`);
 				clear(output);
 				if (!result.results?.length) {
-					output.append(el('p', '', 'No matching indexed evidence.'));
+					output.append(el('p', '', 'Site Agent does not know anything matching that yet. Try another phrase or refresh site knowledge.'));
 					return;
 				}
 				const list = el('div', 'site-agent-result-list');
 				result.results.forEach((item) => {
 					const card = el('article', 'site-agent-result-card');
-					card.append(el('h3', '', item.title || '(untitled)'));
-					card.append(el('p', 'site-agent-result-meta', `${item.type} #${item.object_id} · ${item.subtype || ''}`));
-					card.append(el('pre', '', JSON.stringify(item.summary || {}, null, 2)));
+					const displayTitle = item.title || '(untitled)';
+					card.append(el('h3', '', displayTitle));
+					card.append(el('p', 'site-agent-result-meta', knowledgeTypeLabel(item)));
+					const url = typeof item.summary?.url === 'string' ? item.summary.url.trim() : '';
+					if (/^https?:\/\//i.test(url)) {
+						const link = el('a', 'site-agent-result-link', url);
+						link.href = url;
+						link.setAttribute('aria-label', `Open ${displayTitle}`);
+						card.append(link);
+					}
+					card.append(el('p', 'site-agent-result-excerpt', knowledgeExcerpt(item.summary, query.value)));
+					card.append(knowledgeTechnicalDetails(item));
 					list.append(card);
 				});
 				output.append(list);
@@ -359,7 +498,7 @@
 		form.addEventListener('submit', async (event) => {
 			event.preventDefault();
 			clear(output);
-			output.append(el('p', 'site-agent-status', 'Running bounded local scan…'));
+			output.append(el('p', 'site-agent-status', 'Checking where this plugin is used…'));
 			try {
 				const result = await api('/plugin-impact', {
 					method: 'POST',
@@ -370,11 +509,14 @@
 				summary.append(el('strong', '', `Impact ${result.score || 1}/10`));
 				summary.append(el('p', '', result.answer || 'No answer.'));
 				output.append(summary);
-				output.append(el('pre', 'site-agent-result', JSON.stringify({
+				const findings = el('details', 'site-agent-technical-details site-agent-impact-details');
+				findings.append(el('summary', '', 'Technical findings'));
+				findings.append(el('pre', 'site-agent-result', JSON.stringify({
 					evidence: result.evidence,
 					coverage: result.coverage,
 					caveats: result.caveats,
 				}, null, 2)));
+				output.append(findings);
 			} catch (error) {
 				clear(output);
 				output.append(el('p', 'site-agent-status is-error', error.message));

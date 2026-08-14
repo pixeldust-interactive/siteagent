@@ -17,11 +17,14 @@ find . -type f -name '*.php' \
 php tests/openai-response-parser-test.php
 php tests/openai-key-lifecycle-test.php
 php tests/write-intent-test.php
+php tests/retriever-title-test.php
+php tests/index-content-test.php
 php bin/generate-build-manifest.php --check
 
 if command -v node >/dev/null 2>&1; then
 	node --check assets/admin.js
 	node tests/admin-keyboard-test.js
+	node tests/admin-knowledge-test.js
 fi
 
 echo "Site Agent validation passed."

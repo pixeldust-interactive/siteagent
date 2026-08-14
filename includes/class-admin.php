@@ -213,34 +213,60 @@ final class Site_Agent_Admin {
 	}
 
 	private function render_knowledge(): void {
-		$stats = Site_Agent_Indexer::stats();
+		$stats          = Site_Agent_Indexer::stats();
+		$total          = (int) $stats['total'];
+		$last_completed = (string) $stats['last_completed_gmt'];
+		$last_timestamp = $last_completed ? strtotime( $last_completed . ' UTC' ) : false;
+		$needs_refresh  = 0 === $total || ! $last_timestamp || $last_timestamp < ( time() - ( 7 * DAY_IN_SECONDS ) );
+		$last_label     = $last_timestamp
+			? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $last_timestamp )
+			: __( 'Not scanned yet', 'site-agent' );
 		?>
 		<section class="site-agent-grid">
 			<div class="site-agent-panel">
-				<h2><?php esc_html_e( 'Local knowledge index', 'site-agent' ); ?></h2>
-				<p><?php esc_html_e( 'Content, plugin metadata, builders, forms, cron, roles, safe settings, and database inventory are indexed locally. Credentials, submissions, user records, source code, and secret-like values are excluded.', 'site-agent' ); ?></p>
+				<div class="site-agent-title-with-help">
+					<h2><?php esc_html_e( 'Site knowledge', 'site-agent' ); ?></h2>
+					<details class="site-agent-help">
+						<summary><span aria-hidden="true">?</span><span class="screen-reader-text"><?php esc_html_e( 'About site knowledge', 'site-agent' ); ?></span></summary>
+						<div class="site-agent-help-content"><?php esc_html_e( 'The scan stays in WordPress. It includes useful site structure and settings, but excludes passwords, submissions, user records, source code, and secret-like values.', 'site-agent' ); ?></div>
+					</details>
+				</div>
+				<p><?php esc_html_e( 'Site Agent scans your pages, plugins, and settings so it can answer questions using current information from this site.', 'site-agent' ); ?></p>
 				<div class="site-agent-metrics">
-					<div><strong id="site-agent-index-total"><?php echo esc_html( number_format_i18n( (int) $stats['total'] ) ); ?></strong><span><?php esc_html_e( 'indexed records', 'site-agent' ); ?></span></div>
-					<div><strong><?php echo esc_html( $stats['last_completed_gmt'] ?: '—' ); ?></strong><span><?php esc_html_e( 'last completed (GMT)', 'site-agent' ); ?></span></div>
+					<div><strong id="site-agent-index-total"><?php echo esc_html( number_format_i18n( $total ) ); ?></strong><span><?php esc_html_e( 'items Site Agent can use', 'site-agent' ); ?></span></div>
+					<div><strong id="site-agent-index-updated"><?php echo esc_html( $last_label ); ?></strong><span><?php esc_html_e( 'last refreshed', 'site-agent' ); ?></span></div>
 				</div>
 				<?php if ( current_user_can( 'site_agent_manage' ) ) : ?>
-					<button type="button" class="button button-primary" id="site-agent-rebuild-index"><?php esc_html_e( 'Rebuild knowledge index', 'site-agent' ); ?></button>
-					<span id="site-agent-index-status" class="site-agent-status"></span>
-					<progress id="site-agent-index-progress" value="0" max="1" hidden></progress>
+					<div class="site-agent-index-callout <?php echo $needs_refresh ? 'is-needed' : 'is-ready'; ?>">
+						<h3 id="site-agent-index-heading"><?php echo esc_html( $needs_refresh ? __( 'Refresh site knowledge before using chat', 'site-agent' ) : __( 'Site knowledge is ready', 'site-agent' ) ); ?></h3>
+						<p id="site-agent-index-guidance"><?php echo esc_html( $needs_refresh ? __( 'Run a safe read-only scan now so Site Agent has current information. Nothing on your site will be changed.', 'site-agent' ) : __( 'Refresh after important content, plugin, or settings changes.', 'site-agent' ) ); ?></p>
+						<button type="button" class="button button-primary" id="site-agent-rebuild-index"><?php echo esc_html( $needs_refresh ? __( 'Scan my site now', 'site-agent' ) : __( 'Refresh site knowledge', 'site-agent' ) ); ?></button>
+						<span id="site-agent-index-status" class="site-agent-status" role="status" aria-live="polite"></span>
+						<progress id="site-agent-index-progress" value="0" max="1" aria-label="<?php esc_attr_e( 'Site knowledge scan progress', 'site-agent' ); ?>" hidden></progress>
+					</div>
 				<?php endif; ?>
 			</div>
 			<div class="site-agent-panel">
-				<h2><?php esc_html_e( 'Search the evidence', 'site-agent' ); ?></h2>
+				<div class="site-agent-title-with-help">
+					<h2><?php esc_html_e( 'Preview what Site Agent knows', 'site-agent' ); ?></h2>
+					<details class="site-agent-help">
+						<summary><span aria-hidden="true">?</span><span class="screen-reader-text"><?php esc_html_e( 'About this preview', 'site-agent' ); ?></span></summary>
+						<div class="site-agent-help-content"><?php esc_html_e( 'Search this preview to confirm that Site Agent can find the information you expect before you ask it a question.', 'site-agent' ); ?></div>
+					</details>
+				</div>
+				<p id="site-agent-search-help"><?php esc_html_e( 'Try a page title, plugin name, or topic from your site.', 'site-agent' ); ?></p>
 				<form id="site-agent-search-form" class="site-agent-inline-form">
-					<input type="search" id="site-agent-search-query" placeholder="<?php esc_attr_e( 'Elementor homepage, Gravity Forms, cron…', 'site-agent' ); ?>">
+					<label class="screen-reader-text" for="site-agent-search-query"><?php esc_html_e( 'Search site knowledge', 'site-agent' ); ?></label>
+					<input type="search" id="site-agent-search-query" aria-describedby="site-agent-search-help" placeholder="<?php esc_attr_e( 'Homepage, contact form, plugins…', 'site-agent' ); ?>">
 					<button class="button" type="submit"><?php esc_html_e( 'Search', 'site-agent' ); ?></button>
 				</form>
-				<div id="site-agent-search-results"></div>
+				<div id="site-agent-search-results" aria-live="polite"></div>
 			</div>
 			<div class="site-agent-panel site-agent-wide">
-				<h2><?php esc_html_e( 'Plugin removal analysis', 'site-agent' ); ?></h2>
-				<p><?php esc_html_e( 'Runs a bounded local scan for blocks, shortcodes, stored content, custom tables, options, cron hooks, REST routes, and custom-code references. It reports evidence—not apocalypse fan fiction.', 'site-agent' ); ?></p>
+				<h2><?php esc_html_e( 'Check whether a plugin is safe to remove', 'site-agent' ); ?></h2>
+				<p><?php esc_html_e( 'Site Agent checks where a plugin appears to be used and explains what may be affected. This is a read-only check and does not remove anything.', 'site-agent' ); ?></p>
 				<form id="site-agent-impact-form" class="site-agent-inline-form">
+					<label for="site-agent-impact-plugin"><?php esc_html_e( 'Plugin to check', 'site-agent' ); ?></label>
 					<select id="site-agent-impact-plugin">
 						<?php
 						require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -252,7 +278,7 @@ final class Site_Agent_Admin {
 							<option value="<?php echo esc_attr( $file ); ?>"><?php echo esc_html( (string) $data['Name'] ); ?></option>
 						<?php endforeach; ?>
 					</select>
-					<button class="button" type="submit"><?php esc_html_e( 'Analyze plugin', 'site-agent' ); ?></button>
+					<button class="button" type="submit"><?php esc_html_e( 'Check plugin', 'site-agent' ); ?></button>
 				</form>
 				<div id="site-agent-impact-results"></div>
 			</div>

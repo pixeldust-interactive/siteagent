@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.3.0
+Stable tag: 0.3.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,26 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.3.4 =
+* Decoded one stored WordPress entity layer for readable Knowledge result titles in Jira SA-17.
+* Kept stored titles in Technical details and retained safe text-only primary rendering.
+* Added entity, apostrophe, already-decoded, and double-decoding regressions.
+
+= 0.3.3 =
+* Preserved readable boundaries while indexing page content for Jira SA-17.
+* Removed navigation and footer boilerplate from indexed content.
+* Centered Knowledge excerpts on the search phrase with a calm metadata-match fallback.
+
+= 0.3.2 =
+* Incremented the public asset cache identity for the completed Jira SA-17 Site Knowledge interface.
+* Kept contextual help inside the Site Agent panel at narrow mobile widths.
+
+= 0.3.1 =
+* Reworked Site Knowledge in plain language for Jira SA-17.
+* Added an obvious read-only scan action when site knowledge is empty or stale.
+* Replaced raw search records with readable summaries and optional technical details.
+* Added accessible contextual help and calm plugin-safety guidance.
 
 = 0.3.0 =
 * Added focused homepage-change guidance for Jira SA-16.

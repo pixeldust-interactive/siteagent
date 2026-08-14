@@ -50,18 +50,26 @@ final class Site_Agent_Retriever {
 			if ( ! current_user_can( $cap ) ) {
 				continue;
 			}
-			$summary = json_decode( (string) $row['summary'], true );
+			$summary       = json_decode( (string) $row['summary'], true );
+			$stored_title  = (string) $row['title'];
+			$display_title = self::display_title( $stored_title );
 			$out[] = array(
 				'id'          => (int) $row['id'],
 				'type'        => (string) $row['object_type'],
 				'object_id'   => (string) $row['object_id'],
 				'subtype'     => (string) $row['subtype'],
-				'title'       => (string) $row['title'],
+				'title'       => $display_title,
+				'raw_title'   => $display_title !== $stored_title ? $stored_title : '',
 				'summary'     => is_array( $summary ) ? $summary : array(),
 				'modified_gmt'=> (string) $row['modified_gmt'],
 			);
 		}
 		return $out;
+	}
+
+	private static function display_title( string $title ): string {
+		// Decode one stored WordPress entity layer only. The admin UI inserts this with textContent.
+		return html_entity_decode( $title, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 	}
 
 	public static function context( string $query, int $max_bytes = 18000 ): array {

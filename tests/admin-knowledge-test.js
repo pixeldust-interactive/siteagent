@@ -47,7 +47,8 @@ const elements = {
 const response = {
 	results: [
 		{
-			title: 'WP Maisy',
+			title: 'AI Research & Publish',
+			raw_title: 'AI Research &#038; Publish',
 			type: 'post',
 			subtype: 'page',
 			object_id: 9,
@@ -92,7 +93,7 @@ assert.strictEqual(typeof form.listeners.submit, 'function', 'knowledge search b
 	const nodes = descendants(output);
 	const card = nodes.find((item) => item.className === 'site-agent-result-card');
 	assert.ok(card, 'a readable result card is rendered');
-	assert.strictEqual(card.children[0].textContent, 'WP Maisy', 'title is primary');
+	assert.strictEqual(card.children[0].textContent, 'AI Research & Publish', 'decoded readable title is primary');
 	assert.strictEqual(card.children[1].textContent, 'Page', 'content type is translated');
 	assert.strictEqual(card.children[2].tagName, 'A', 'safe URL is visible');
 	assert.strictEqual(card.children[2].textContent, 'https://maisy.wpenginepowered.com/', 'URL is readable');
@@ -104,6 +105,8 @@ assert.strictEqual(typeof form.listeners.submit, 'function', 'knowledge search b
 
 	const raw = descendants(card.children[4]).find((item) => item.tagName === 'PRE');
 	assert.ok(raw?.textContent.includes('"content"'), 'raw indexed data remains available inside technical details');
+	assert.ok(descendants(card.children[4]).some((item) => item.textContent === 'AI Research &#038; Publish'), 'stored title is available only inside technical details');
+	assert.match(source, /card\.append\(el\('h3', '', displayTitle\)\)/, 'display title is inserted with textContent through the safe element helper');
 
 	const cards = nodes.filter((item) => item.className === 'site-agent-result-card');
 	assert.match(cards[1].children[2].textContent, /matched by its title or site metadata for “homepage”/i, 'metadata-only matches use a calm explanatory fallback');

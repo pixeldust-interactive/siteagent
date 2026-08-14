@@ -437,6 +437,7 @@
 			['Content subtype', item.subtype || 'Not available'],
 			['Internal ID', item.object_id ?? 'Not available'],
 			['Last indexed', item.modified_gmt || 'Not available'],
+			...(item.raw_title ? [['Stored title', item.raw_title]] : []),
 		].forEach(([label, value]) => {
 			list.append(el('dt', '', label), el('dd', '', value));
 		});
@@ -467,13 +468,14 @@
 				const list = el('div', 'site-agent-result-list');
 				result.results.forEach((item) => {
 					const card = el('article', 'site-agent-result-card');
-					card.append(el('h3', '', item.title || '(untitled)'));
+					const displayTitle = item.title || '(untitled)';
+					card.append(el('h3', '', displayTitle));
 					card.append(el('p', 'site-agent-result-meta', knowledgeTypeLabel(item)));
 					const url = typeof item.summary?.url === 'string' ? item.summary.url.trim() : '';
 					if (/^https?:\/\//i.test(url)) {
 						const link = el('a', 'site-agent-result-link', url);
 						link.href = url;
-						link.setAttribute('aria-label', `Open ${item.title || 'this item'}`);
+						link.setAttribute('aria-label', `Open ${displayTitle}`);
 						card.append(link);
 					}
 					card.append(el('p', 'site-agent-result-excerpt', knowledgeExcerpt(item.summary, query.value)));

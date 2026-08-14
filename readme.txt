@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.3.3
+Stable tag: 0.3.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,11 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.3.4 =
+* Decoded one stored WordPress entity layer for readable Knowledge result titles in Jira SA-17.
+* Kept stored titles in Technical details and retained safe text-only primary rendering.
+* Added entity, apostrophe, already-decoded, and double-decoding regressions.
 
 = 0.3.3 =
 * Preserved readable boundaries while indexing page content for Jira SA-17.

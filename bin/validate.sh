@@ -17,6 +17,7 @@ find . -type f -name '*.php' \
 php tests/openai-response-parser-test.php
 php tests/openai-key-lifecycle-test.php
 php tests/write-intent-test.php
+php tests/retriever-title-test.php
 php tests/index-content-test.php
 php bin/generate-build-manifest.php --check
 

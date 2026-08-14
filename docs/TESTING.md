@@ -10,6 +10,10 @@ Run `node tests/admin-keyboard-test.js` to verify that starter prompts respond e
 
 Run `node tests/admin-knowledge-test.js` to exercise populated-index result rendering and verify the Site Knowledge purpose, empty/stale next action, accessible help, professional copy, readable summaries, and progressive technical disclosure.
 
+Run `node tests/admin-chat-flow-test.js` to cover the empty/history, active, completed, proposal, failed-send, edit, and retry states. It also verifies that the draft survives failure, Retry does not duplicate the user turn, completion receipts remain enabled, and working animation has a reduced-motion fallback.
+
+Run `php tests/conversation-history-test.php` to verify that recent conversations are bounded, disabled when local storage is off, and restricted to the current WordPress user at both list and message-read boundaries.
+
 Run:
 
 ```bash
@@ -54,6 +58,8 @@ Run:
 13. Submit provider errors containing fake secrets; audit output must show redaction.
 14. Test wp-admin with narrow mobile width.
 15. Uninstall with purge disabled and enabled.
+16. At 375px, 768px, 1280px, and 1440px, exercise empty, active, long-answer, proposal, failed-send, Retry, Edit request, and restored-history chat states.
+17. Confirm Enter sends, Shift+Enter inserts a line, starter prompts respond once to Enter/Space, live status announcements are understandable, and the composer remains reachable after a long conversation.
 
 ## Explicit limitations to verify in UI
 

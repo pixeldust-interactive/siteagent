@@ -1,14 +1,14 @@
 {
     "schema": 1,
-    "release_id": "site-agent-0.3.4",
-    "version": "0.3.4",
+    "release_id": "site-agent-0.3.5",
+    "version": "0.3.5",
     "files": {
-        "assets/admin.css": "1772269ba979fdedbaf2bdaf77e2e8df9ea70ad4c76e3d27c21cab66ce3f0a70",
-        "assets/admin.js": "dbc2a6153b82f5b11810d22e6b411cea073542ee5ebe30b24e70aebc98735f17",
+        "assets/admin.css": "d680ba7d5f33eda8c06ccc6e3581a4e7050dddba38376cb94843f8d098ae4134",
+        "assets/admin.js": "893db893583a02489628f4a11899a38b979d7559c84eaa0529d32aee31ac3e03",
         "includes/class-action-registry.php": "9362ad13d944ea034c06813b4d24fe644756530b66e2ba89193889104fd15e8b",
         "includes/class-activator.php": "ffabc0dccfe3d1cc3a69f1e7ad39ab4bd1cbce64f7b26f82b4de87124977d6ce",
-        "includes/class-admin.php": "72588c391e10e43ce86562c7eea38e4e026107119313414f9e6a63b9a5b9b1b9",
-        "includes/class-agent.php": "35300d0e3c96b49a7314a85564f31b7cc7d0d392e7bb5e485311cc7dd9780884",
+        "includes/class-admin.php": "985635a1071a42a364935d5f465b8a7e961bdd6d4e3e8dc34fbec88148230e06",
+        "includes/class-agent.php": "db7cc5c67b9ebb58e065fcc1eb69fc07791bc8af96606f465c5807d624ce2824",
         "includes/class-approval-service.php": "92b8a7661da4cbce519cce2f520fe8c1751b340453877aa8e8d89b525c02780b",
         "includes/class-audit-log.php": "b80977f39b4fd9f62b8a48df57c791b831cacd30bbd95d7871da4cd639438634",
         "includes/class-browser-guard.php": "62babacce2d050be3a8cab9f6b9d49dfdec8cf493f83c2c4b1db828aa74652bb",
@@ -23,12 +23,12 @@
         "includes/class-plugin-impact.php": "71ca3401ab5299f57c0d31594d151b7c8d68d1ceeb7fc3778c9a3e33c22be877",
         "includes/class-rate-limiter.php": "08024ec231f75a90cf62ea8d8d5cc16c762b20be961a9215c8ef5983de97f944",
         "includes/class-redactor.php": "a1db0da9971044440db9313d8dd06028f9d3dad1c3b8f1397467e42c5d92342d",
-        "includes/class-rest-controller.php": "cb8a25d52c4ff0d608c9bf0301bc52b920396d759876a4c401d9ee36682ad91b",
+        "includes/class-rest-controller.php": "339aa7f26f2a7faaeef0c9b5f1026e0d98993117ef8856f873cdd54fbd251dd0",
         "includes/class-retention.php": "3264978ed54ddd275a38bcc7d54a22a1a92c10befdaa75ae12b82d2fa730c407",
         "includes/class-retriever.php": "e6063bec3b97f1f114386ff45da64983eff289b76bf4288ad7bc1b5efb35b8ab",
-        "README.md": "b18bf1e228c28a5353af97b5592ead465152604de1fa8a01ec3fce9e6d123163",
-        "readme.txt": "15687d2833e712e3d20e51a7475ff599b89019325c259bfbd4b1208beb856d7a",
-        "site-agent.php": "42daa1751681fcf290dbbdfd8d9853920232d6c9cfe5c7fb50343776986162d0",
+        "README.md": "37914ee0d5390c9a95a2f5531bef329c1530de3abe9a6c9584dc247443358dc9",
+        "readme.txt": "8c65b60af35117bc540bf235fbce821f0759b062b597099203e62dd64f6b1d57",
+        "site-agent.php": "62c22610ba8d38c3e0426251762a02775d92eab59f55efef9795831567ef3c56",
         "uninstall.php": "44b7c04c7156913ec74cf4ff2ebe2b23e8622fd36d66dddfa9355426e8572ff3"
     }
 }

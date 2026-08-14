@@ -351,24 +351,11 @@
 		return labels[type] || (type ? type.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Site information');
 	}
 
-	function knowledgeExcerpt(summary) {
-		let text = typeof summary === 'string' ? summary : '';
-		if (summary && typeof summary === 'object') {
-			const preferred = ['excerpt', 'description', 'content', 'answer', 'label', 'name', 'value'];
-			for (const key of preferred) {
-				if (typeof summary[key] === 'string' && summary[key].trim()) {
-					text = summary[key];
-					break;
-				}
-			}
-			if (!text) {
-				text = Object.entries(summary)
-					.filter(([key, value]) => !['url', 'id', 'object_id', 'status'].includes(key) && typeof value === 'string')
-					.map(([, value]) => value)
-					.find((value) => value.trim()) || '';
-			}
-		}
-		text = text
+	function readableKnowledgeText(value) {
+		return String(value || '')
+			.replace(/<(script|style|nav|footer|aside)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+			.replace(/<!--[\s\S]*?-->/g, ' ')
+			.replace(/<\/?(?:address|article|blockquote|br|dd|div|dl|dt|fieldset|figcaption|figure|h[1-6]|hr|li|main|ol|p|pre|section|table|tbody|td|tfoot|th|thead|tr|ul)\b[^>]*>/gi, ' ')
 			.replace(/<[^>]*>/g, ' ')
 			.replace(/&nbsp;/gi, ' ')
 			.replace(/&amp;/gi, '&')
@@ -376,8 +363,69 @@
 			.replace(/&#039;/gi, "'")
 			.replace(/\s+/g, ' ')
 			.trim();
-		if (!text) return 'Site Agent has technical information for this item. Open Technical details to review it.';
-		return text.length > 260 ? `${text.slice(0, 257).trimEnd()}…` : text;
+	}
+
+	function knowledgeQueryTerms(query) {
+		return String(query || '')
+			.toLowerCase()
+			.replace(/[^a-z0-9_-]+/g, ' ')
+			.trim()
+			.split(/\s+/)
+			.filter((term) => term.length >= 3);
+	}
+
+	function boundedKnowledgeExcerpt(text, matchIndex = -1, matchLength = 0) {
+		const limit = 260;
+		if (text.length <= limit) return text;
+		let start = matchIndex >= 0 ? Math.max(0, matchIndex - 105) : 0;
+		let end = Math.min(text.length, start + limit - 2);
+		if (matchIndex >= 0 && matchIndex + matchLength > end) {
+			end = Math.min(text.length, matchIndex + matchLength + 105);
+			start = Math.max(0, end - (limit - 2));
+		}
+		if (start > 0) {
+			const firstSpace = text.indexOf(' ', start);
+			if (firstSpace >= 0 && firstSpace < end) start = firstSpace + 1;
+		}
+		if (end < text.length) {
+			const lastSpace = text.lastIndexOf(' ', end);
+			if (lastSpace > start) end = lastSpace;
+		}
+		return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
+	}
+
+	function knowledgeExcerpt(summary, query) {
+		const candidates = [];
+		if (typeof summary === 'string') candidates.push(readableKnowledgeText(summary));
+		if (summary && typeof summary === 'object') {
+			['excerpt', 'description', 'content', 'answer', 'label', 'name', 'value'].forEach((key) => {
+				if (typeof summary[key] === 'string') candidates.push(readableKnowledgeText(summary[key]));
+			});
+			Object.entries(summary)
+				.filter(([key, value]) => !['url', 'id', 'object_id', 'status'].includes(key) && typeof value === 'string')
+				.forEach(([, value]) => candidates.push(readableKnowledgeText(value)));
+		}
+		const readable = candidates.filter(Boolean);
+		const terms = knowledgeQueryTerms(query);
+		for (const text of readable) {
+			const lower = text.toLowerCase();
+			let matchIndex = -1;
+			let matchTerm = '';
+			for (const term of terms) {
+				const index = lower.indexOf(term);
+				if (index >= 0 && (matchIndex < 0 || index < matchIndex)) {
+					matchIndex = index;
+					matchTerm = term;
+				}
+			}
+			if (matchIndex >= 0) return boundedKnowledgeExcerpt(text, matchIndex, matchTerm.length);
+		}
+		if (terms.length) {
+			const phrase = String(query || '').trim().slice(0, 80);
+			return `This item matched by its title or site metadata for “${phrase}”. Open Technical details for more information.`;
+		}
+		if (readable.length) return boundedKnowledgeExcerpt(readable[0]);
+		return 'Site Agent has technical information for this item. Open Technical details to review it.';
 	}
 
 	function knowledgeTechnicalDetails(item) {
@@ -428,7 +476,7 @@
 						link.setAttribute('aria-label', `Open ${item.title || 'this item'}`);
 						card.append(link);
 					}
-					card.append(el('p', 'site-agent-result-excerpt', knowledgeExcerpt(item.summary)));
+					card.append(el('p', 'site-agent-result-excerpt', knowledgeExcerpt(item.summary, query.value)));
 					card.append(knowledgeTechnicalDetails(item));
 					list.append(card);
 				});

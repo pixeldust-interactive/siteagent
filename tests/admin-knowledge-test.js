@@ -54,7 +54,16 @@ const response = {
 			modified_gmt: '2026-08-14 06:14:38',
 			summary: {
 				url: 'https://maisy.wpenginepowered.com/',
-				content: '<p>Eight focused WordPress tools help visitors choose the right next step.</p>',
+				content: '<header><nav>WP MAISYHomeGuideSite AgentSite SignalOutcome Watchdog</nav></header><main><div>Eight focused WordPress tools help visitors choose the right next step.</div><section>The homepage helps visitors understand the available tools and choose a useful next step.</section></main><footer>WP MAISYHomeGuideSite AgentSite SignalOutcome Watchdog</footer>',
+			},
+		},
+		{
+			title: 'Homepage settings',
+			type: 'option',
+			object_id: 'page_on_front',
+			modified_gmt: '2026-08-14 06:14:38',
+			summary: {
+				value: '42',
 			},
 		},
 	],
@@ -87,12 +96,17 @@ assert.strictEqual(typeof form.listeners.submit, 'function', 'knowledge search b
 	assert.strictEqual(card.children[1].textContent, 'Page', 'content type is translated');
 	assert.strictEqual(card.children[2].tagName, 'A', 'safe URL is visible');
 	assert.strictEqual(card.children[2].textContent, 'https://maisy.wpenginepowered.com/', 'URL is readable');
-	assert.strictEqual(card.children[3].textContent, 'Eight focused WordPress tools help visitors choose the right next step.', 'excerpt is concise plain text');
+	assert.match(card.children[3].textContent, /homepage helps visitors/i, 'excerpt is centered on the query match');
+	assert.doesNotMatch(card.children[3].textContent, /WP MAISYHomeGuide/, 'navigation and footer boilerplate are excluded');
+	assert.ok(card.children[3].textContent.length <= 260, 'excerpt remains bounded');
 	assert.strictEqual(card.children[4].tagName, 'DETAILS', 'technical fields use native progressive disclosure');
 	assert.strictEqual(card.children.some((item) => item.tagName === 'PRE'), false, 'raw data is not primary card content');
 
 	const raw = descendants(card.children[4]).find((item) => item.tagName === 'PRE');
 	assert.ok(raw?.textContent.includes('"content"'), 'raw indexed data remains available inside technical details');
+
+	const cards = nodes.filter((item) => item.className === 'site-agent-result-card');
+	assert.match(cards[1].children[2].textContent, /matched by its title or site metadata for “homepage”/i, 'metadata-only matches use a calm explanatory fallback');
 
 	const php = fs.readFileSync(path.join(__dirname, '..', 'includes', 'class-admin.php'), 'utf8');
 	const css = fs.readFileSync(path.join(__dirname, '..', 'assets', 'admin.css'), 'utf8');

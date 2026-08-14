@@ -584,6 +584,13 @@
 	font-weight: 600;
 }
 
+.site-agent-wrap .site-agent-technical-details > summary:focus-visible {
+	border-radius: 2px;
+	box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--sa-blue);
+	outline: 3px solid var(--sa-blue);
+	outline-offset: 3px;
+}
+
 .site-agent-technical-list {
 	display: grid;
 	grid-template-columns: max-content minmax(0, 1fr);

@@ -86,13 +86,14 @@ for (const key of ['Enter', ' ']) {
 for (const key of ['Enter', ' ']) {
 	let prevented = 0;
 	let stopped = 0;
+	const selectors = [];
 	chat.listeners.keydown({
 		key,
 		repeat: false,
 		target: {
 			closest(selector) {
-				if (selector.startsWith('summary')) return this;
-				if (selector === 'button.site-agent-starter[data-prompt]') return { dataset: { prompt: 'Must not activate' } };
+				selectors.push(selector);
+				if (selector === '[data-prompt]') return { dataset: { prompt: 'Must not activate' } };
 				return null;
 			},
 		},
@@ -101,6 +102,7 @@ for (const key of ['Enter', ' ']) {
 	});
 	assert.strictEqual(prevented, 0, `${key === ' ' ? 'Space' : key} is not cancelled on a native summary`);
 	assert.strictEqual(stopped, 0, `${key === ' ' ? 'Space' : key} is not claimed by the starter delegate`);
+	assert.strictEqual(selectors.join(','), 'button.site-agent-starter[data-prompt]', 'the delegated handler checks only the exact starter-button selector');
 }
 
 prompt.value = '';

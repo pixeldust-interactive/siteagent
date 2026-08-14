@@ -1,10 +1,10 @@
 {
     "schema": 1,
-    "release_id": "site-agent-0.3.7",
-    "version": "0.3.7",
+    "release_id": "site-agent-0.3.8",
+    "version": "0.3.8",
     "files": {
-        "assets/admin.css": "339150bd28a1fee431d3bbdafb8e033be6f00b812ad5d4fbb9cdf906c2043af8",
-        "assets/admin.js": "0eff199076ea584faf41197d69283c55117c07c03cd0f02aae68622b92d91752",
+        "assets/admin.css": "e0d59789997deea46c0c2b8081c852ab3e4425101dfbc2e3655d58591669fb2a",
+        "assets/admin.js": "41eccb274d821795e6035ab4abeb73798539ba03bd794cd43e9cdb013f7dacbe",
         "includes/class-action-registry.php": "9362ad13d944ea034c06813b4d24fe644756530b66e2ba89193889104fd15e8b",
         "includes/class-activator.php": "ffabc0dccfe3d1cc3a69f1e7ad39ab4bd1cbce64f7b26f82b4de87124977d6ce",
         "includes/class-admin.php": "40f0de92ac2a63f4fbfecb71a12bef4d88eff4062c24f847d3e5ed1352441b1f",
@@ -26,9 +26,9 @@
         "includes/class-rest-controller.php": "339aa7f26f2a7faaeef0c9b5f1026e0d98993117ef8856f873cdd54fbd251dd0",
         "includes/class-retention.php": "3264978ed54ddd275a38bcc7d54a22a1a92c10befdaa75ae12b82d2fa730c407",
         "includes/class-retriever.php": "e6063bec3b97f1f114386ff45da64983eff289b76bf4288ad7bc1b5efb35b8ab",
-        "README.md": "c61f8fae180425d9c7e0b41076b937307fcdacb28490448e9e41e789d4ced07f",
-        "readme.txt": "b1df8775a5ee1bebfa762192b957f1ab2cef89597422c3bf1d084c933db89fcb",
-        "site-agent.php": "7bf0dd7174339f10507019ec3dee95bdb19ea3b45d4de496f79d1c75ac4e982b",
+        "README.md": "7dbdfdd041209e3276c3a2680d53fc028a810b1e84c66a1601de71a6793183aa",
+        "readme.txt": "0832e3f9c0708857ea562be84c372dec3a3a56eeab1bc728c433732bc72f263f",
+        "site-agent.php": "820819ccb52626bbf5325917ff7487cd7a21c188a975eca4ec57e70389574fa1",
         "uninstall.php": "44b7c04c7156913ec74cf4ff2ebe2b23e8622fd36d66dddfa9355426e8572ff3"
     }
 }

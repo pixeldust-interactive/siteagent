@@ -144,13 +144,7 @@
 
 	function technicalDetails(payload) {
 		const details = el('details', 'site-agent-technical-details');
-		const summary = el('summary', '', 'Technical details');
-		summary.addEventListener('keydown', (event) => {
-			if (!event.repeat && ['Enter', ' '].includes(event.key)) {
-				event.stopPropagation();
-			}
-		});
-		details.append(summary);
+		details.append(el('summary', '', 'Technical details'));
 		details.append(el('pre', 'site-agent-args', JSON.stringify(payload || {}, null, 2)));
 		return details;
 	}
@@ -376,8 +370,7 @@
 
 		chat?.addEventListener('keydown', (event) => {
 			if (event.repeat || !['Enter', ' '].includes(event.key)) return;
-			if (!event.target?.closest || event.target.closest('summary, textarea, input, select, a, [contenteditable="true"]')) return;
-			const starter = event.target.closest('button.site-agent-starter[data-prompt]');
+			const starter = event.target?.closest?.('button.site-agent-starter[data-prompt]');
 			if (!starter) return;
 			event.preventDefault();
 			event.stopPropagation();

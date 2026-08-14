@@ -181,18 +181,7 @@ form.requestSubmit = () => {
 	assert.ok(technical, 'canonical action data remains available on demand');
 	assert.strictEqual(technical.tagName, 'DETAILS', 'technical data uses a collapsed disclosure');
 	assert.strictEqual(technical.children[0].textContent, 'Technical details', 'technical disclosure has a readable label');
-	for (const key of ['Enter', ' ']) {
-		let prevented = 0;
-		let stopped = 0;
-		technical.children[0].listeners.keydown({
-			key,
-			repeat: false,
-			preventDefault() { prevented += 1; },
-			stopPropagation() { stopped += 1; },
-		});
-		assert.strictEqual(prevented, 0, `${key === ' ' ? 'Space' : key} preserves the native disclosure action`);
-		assert.strictEqual(stopped, 1, `${key === ' ' ? 'Space' : key} stays out of the delegated starter handler`);
-	}
+	assert.strictEqual(technical.children[0].listeners.keydown, undefined, 'technical disclosure leaves native keyboard events entirely untouched');
 	assert.match(technical.children[1].textContent, /blogdescription/, 'internal option name is retained only in technical details');
 	assert.doesNotMatch(proposal.children[1].textContent + proposal.children[2].textContent, /blogdescription|option\.update|\{/, 'internal names and JSON do not lead the proposal');
 	proposal.querySelector('.site-agent-proposal-controls').children[1].listeners.click();
@@ -224,6 +213,7 @@ form.requestSubmit = () => {
 	assert.match(css, /\.site-agent-chat\s*\{[\s\S]*max-height:\s*58vh/, 'long conversations scroll independently');
 	assert.match(css, /overflow-wrap:\s*anywhere/, 'long content wraps without horizontal overflow');
 	assert.match(css, /\.site-agent-proposal\s*\{[\s\S]*box-sizing:\s*border-box[\s\S]*max-width:\s*100%/, 'proposal cards remain contained at narrow widths');
+	assert.match(css, /\.site-agent-wrap \.site-agent-technical-details > summary:focus-visible\s*\{[\s\S]*box-shadow:[\s\S]*outline:\s*3px solid/, 'technical disclosure has a dedicated visible keyboard-focus treatment');
 	assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*site-agent-working-dots/, 'working animation respects reduced motion');
 	assert.ok(fetchCalls.some((call) => call.url.endsWith('/chat/rendered')), 'visible completion records its receipt');
 

@@ -97,7 +97,7 @@ final class Site_Agent_Agent {
 			);
 		}
 
-		$system = self::system_prompt( $role );
+		$system = self::system_prompt( $role, $redacted_prompt );
 		$turn = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, array(), false, $deadline );
 		if ( is_wp_error( $turn ) ) {
 			$error_data = $turn->get_error_data();
@@ -115,7 +115,8 @@ final class Site_Agent_Agent {
 			return $turn;
 		}
 
-		$tool_results = self::run_read_calls( (array) $turn['read_calls'] );
+		$read_calls = self::ensure_discovery_read_calls( (array) $turn['read_calls'], $redacted_prompt );
+		$tool_results = self::run_read_calls( $read_calls );
 		if ( ! empty( $tool_results ) ) {
 			$second = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, $tool_results, false, $deadline );
 			if ( is_wp_error( $second ) ) {
@@ -321,32 +322,68 @@ final class Site_Agent_Agent {
 		);
 	}
 
-	private static function system_prompt( string $role ): string {
+	private static function system_prompt( string $role, string $prompt = '' ): string {
 		$catalog = Site_Agent_Action_Registry::catalog();
+		$instructions = array(
+			'You are Site Agent, a private WordPress administration planner operating inside one authenticated wp-admin session.',
+			'God Phrase: “Ask your site anything. Tell it what to do.”',
+			'You may explain evidence and request only tools listed below. You never execute writes.',
+			'The server—not you—validates arguments, permissions, risk, approvals, execution, logging, and rollback.',
+			'Never request, reveal, infer, reconstruct, or store credentials, passwords, API keys, tokens, cookies, private keys, database credentials, salts, or authentication secrets.',
+			'Do not claim certainty when hosting telemetry, external SaaS state, logs, or historical snapshots are unavailable.',
+			'Do not claim that a rollback exists until the server returns a reversible ledger entry.',
+			'Prefer the minimum necessary change. Ask for clarification when the target or intended result is ambiguous.',
+			'When the user explicitly requests a supported change and provides the required arguments, populate write_actions so the server can produce the review card. Never substitute prose-only plan narration for write_actions. Proposing is not executing.',
+			'Provide a useful non-empty answer for every final response. An intermediate read-tool plan may omit answer; after validated tool data is supplied, answer must be non-empty.',
+			'AI role focus: ' . self::ROLES[ $role ]['focus'],
+			'Read tools: ' . wp_json_encode( $catalog['read'] ),
+			'Write actions that may be proposed: ' . wp_json_encode( $catalog['write'] ),
+			'Exact write-action argument contracts: ' . wp_json_encode( Site_Agent_Action_Registry::write_contracts() ),
+		);
+		if ( self::is_homepage_change_request( $prompt ) ) {
+			$instructions[] = 'This is a homepage change conversation. Use the supplied site-search evidence to identify the configured homepage and its editing system before asking the user. Briefly say what you found in ordinary language, without a page ID or URL. If the content goal is missing, ask exactly one concise question: “What should the new section help visitors understand or do?” Then offer one short example, such as: “For example, help visitors understand what you offer and choose the right next step.” Do not ask for a heading, paragraph, bullets, button text, link, image, placement, editing system, search description, page ID, URL, saved-review state, and publishing choice all at once. When those choices later matter, say “button” instead of CTA, “search description” instead of SEO metadata, “editing system” instead of page builder, and explain saved review versus publishing in plain language. Recommend a visual placement such as “below the introduction,” prepare a reversible reviewable proposal, and say that nothing changes until the user approves the exact preview.';
+		}
 		return implode(
 			"\n",
+			$instructions
+		);
+	}
+
+	private static function ensure_discovery_read_calls( array $calls, string $prompt ): array {
+		if ( ! self::is_homepage_change_request( $prompt ) || self::has_read_call( $calls, 'site.search' ) ) {
+			return $calls;
+		}
+
+		array_unshift(
+			$calls,
 			array(
-				'You are Site Agent, a private WordPress administration planner operating inside one authenticated wp-admin session.',
-				'God Phrase: “Ask your site anything. Tell it what to do.”',
-				'You may explain evidence and request only tools listed below. You never execute writes.',
-				'The server—not you—validates arguments, permissions, risk, approvals, execution, logging, and rollback.',
-				'Never request, reveal, infer, reconstruct, or store credentials, passwords, API keys, tokens, cookies, private keys, database credentials, salts, or authentication secrets.',
-				'Do not claim certainty when hosting telemetry, external SaaS state, logs, or historical snapshots are unavailable.',
-				'Do not claim that a rollback exists until the server returns a reversible ledger entry.',
-				'Prefer the minimum necessary change. Ask for clarification when the target or intended result is ambiguous.',
-				'When the user explicitly requests a supported change and provides the required arguments, populate write_actions so the server can produce the review card. Never substitute prose-only plan narration for write_actions. Proposing is not executing.',
-				'Provide a useful non-empty answer for every final response. An intermediate read-tool plan may omit answer; after validated tool data is supplied, answer must be non-empty.',
-				'AI role focus: ' . self::ROLES[ $role ]['focus'],
-				'Read tools: ' . wp_json_encode( $catalog['read'] ),
-				'Write actions that may be proposed: ' . wp_json_encode( $catalog['write'] ),
-				'Exact write-action argument contracts: ' . wp_json_encode( Site_Agent_Action_Registry::write_contracts() ),
+				'name' => 'site.search',
+				'args' => array(
+					'query' => 'configured homepage front page editing system template builder Divi Elementor block editor',
+					'limit' => 12,
+				),
 			)
 		);
+		return $calls;
+	}
+
+	private static function is_homepage_change_request( string $prompt ): bool {
+		return 1 === preg_match( '/\b(?:home\s*page|front\s*page)\b/i', $prompt )
+			&& 1 === preg_match( '/\b(?:add|create|change|update|improve|section|content|copy|design)\b/i', $prompt );
+	}
+
+	private static function has_read_call( array $calls, string $name ): bool {
+		foreach ( $calls as $call ) {
+			if ( is_array( $call ) && strtolower( trim( (string) ( $call['name'] ?? '' ) ) ) === $name ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static function is_explicit_write_request( string $prompt ): bool {
 		return 1 === preg_match(
-			'/^\s*(?:(?:please|kindly)\s+|(?:can|could|would)\s+you\s+|i\s+(?:want|need)\s+you\s+to\s+)?(?:create|update|change|replace|remove|delete|trash|activate|deactivate|publish|schedule|set|rollback|roll\s+back)\b/i',
+			'/^\s*(?:(?:please|kindly)\s+|(?:can|could|would)\s+you\s+|i\s+(?:(?:want|need)\s+(?:you\s+)?to|would\s+like\s+to)\s+)?(?:add|create|update|change|replace|remove|delete|trash|activate|deactivate|publish|schedule|set|rollback|roll\s+back)\b/i',
 			$prompt
 		);
 	}

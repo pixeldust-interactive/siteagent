@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.2.7
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,12 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.3.0 =
+* Added focused homepage-change guidance for Jira SA-16.
+* Uses bounded indexed discovery to identify the configured homepage and editing system before asking the user.
+* Asks one plain-language content-goal question with a suggested default instead of a technical checklist.
+* Defaults the next step to a reversible reviewable proposal that requires explicit approval.
 
 = 0.2.7 =
 * Release blocker fixes: Jira SA-11 and SA-12.

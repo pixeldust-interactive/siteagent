@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 define( 'ABSPATH', __DIR__ );
+define( 'SITE_AGENT_VERSION', '0.2.7-test' );
 
 function __( string $text, string $domain = '' ): string { return $text; }
 function wp_json_encode( mixed $value, int $flags = 0 ): string|false { return json_encode( $value, $flags ); }
@@ -43,6 +44,24 @@ foreach ( array( 'write_actions', 'Exact write-action argument contracts', 'blog
 	} else {
 		echo 'PASS system prompt contains: ' . $needle . PHP_EOL;
 	}
+}
+
+$live_answer_method = new ReflectionMethod( Site_Agent_Agent::class, 'authoritative_live_answer' );
+$live_answer_method->setAccessible( true );
+$live_answer = $live_answer_method->invoke( null, 'What version of Site Agent is installed right now?' );
+if ( ! is_array( $live_answer ) || ! str_contains( (string) ( $live_answer['answer'] ?? '' ), SITE_AGENT_VERSION ) || array( 'plugins.list' ) !== ( $live_answer['read_tools'] ?? array() ) ) {
+	$failures++;
+	fwrite( STDERR, 'FAIL current Site Agent version does not use authoritative live status' . PHP_EOL );
+} else {
+	echo 'PASS current Site Agent version uses authoritative live status' . PHP_EOL;
+}
+
+$not_live = $live_answer_method->invoke( null, 'What changed on my site this week?' );
+if ( null !== $not_live ) {
+	$failures++;
+	fwrite( STDERR, 'FAIL unrelated prompts are incorrectly short-circuited' . PHP_EOL );
+} else {
+	echo 'PASS unrelated prompts keep the normal planning path' . PHP_EOL;
 }
 
 exit( $failures > 0 ? 1 : 0 );

@@ -59,6 +59,10 @@ assert.strictEqual(typeof chat.listeners.keydown, 'function', 'chat keyboard han
 assert.strictEqual(typeof chat.listeners.click, 'function', 'chat pointer handler is registered');
 assert.match(source, /new AbortController\(\)/, 'REST requests have a browser-side deadline');
 assert.match(source, /Nothing was changed\. Try again or ask a shorter question\./, 'timeout recovery is actionable');
+assert.match(source, /\/chat\/rendered/, 'visible answers send a separate completion receipt');
+assert.match(source, /form\.dataset\.retrying/, 'Retry reuses the original user turn instead of duplicating it');
+assert.match(source, /Edit request/, 'failure recovery includes an edit action');
+assert.match(source, /timeoutMs:\s*38000/, 'browser deadline remains below the observed gateway boundary');
 
 for (const key of ['Enter', ' ']) {
 	prompt.value = '';

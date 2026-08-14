@@ -226,9 +226,11 @@
 			if (form.dataset.pending === '1') return;
 			const text = String(prompt.value || '').trim();
 			if (!text) return;
+			const isRetry = form.dataset.retrying === '1';
+			delete form.dataset.retrying;
 			form.dataset.pending = '1';
-			form.querySelectorAll('.site-agent-retry').forEach((node) => node.remove());
-			appendMessage(chat, 'You', text);
+			form.querySelectorAll('.site-agent-recovery').forEach((node) => node.remove());
+			if (!isRetry) appendMessage(chat, 'You', text);
 			prompt.value = '';
 			clear(proposals);
 			setStatus(status, cfg.strings?.working || 'Working…');
@@ -236,7 +238,7 @@
 			try {
 				const result = await api('/chat', {
 					method: 'POST',
-					timeoutMs: 55000,
+					timeoutMs: 38000,
 					body: {
 						prompt: text,
 						conversation_id: conversationId,
@@ -248,15 +250,31 @@
 				renderSources(chat, result.sources || []);
 				if (result.notice) appendMessage(chat, 'System', result.notice);
 				renderProposal(proposals, result.proposal);
+				if (result.completion_token) {
+					try {
+						await api('/chat/rendered', { method: 'POST', body: { completion_token: result.completion_token } });
+					} catch (receiptError) {
+						setStatus(status, 'The answer is visible, but Site Agent could not record the completion receipt.', true);
+						return;
+					}
+				}
 				setStatus(status, '');
 			} catch (error) {
 				appendMessage(chat, 'System', error.message);
 				setStatus(status, error.message, true);
 				prompt.value = text;
+				const recovery = el('span', 'site-agent-recovery');
 				const retry = el('button', 'button site-agent-retry', 'Retry');
 				retry.type = 'button';
-				retry.addEventListener('click', () => form.requestSubmit(), { once: true });
-				status.after(retry);
+				retry.addEventListener('click', () => {
+					form.dataset.retrying = '1';
+					form.requestSubmit();
+				}, { once: true });
+				const edit = el('button', 'button', 'Edit request');
+				edit.type = 'button';
+				edit.addEventListener('click', () => prompt.focus());
+				recovery.append(retry, edit);
+				status.after(recovery);
 			} finally {
 				form.dataset.pending = '0';
 				form.querySelector('button[type="submit"]').disabled = false;

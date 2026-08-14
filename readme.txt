@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.2.6
+Stable tag: 0.2.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,12 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.2.7 =
+* Release blocker fixes: Jira SA-11 and SA-12.
+* Answered current Site Agent version questions from authoritative live plugin state without a slow two-stage provider round trip.
+* Moved `chat_completed` to a separate browser-render receipt so disconnected responses remain `chat_response_ready`, not falsely visible completions.
+* Reduced the shared provider budget below the observed gateway boundary and added clear Retry/Edit recovery without duplicating the user turn.
 
 = 0.2.6 =
 * Bounded the complete chat provider workflow below common hosting gateway limits.

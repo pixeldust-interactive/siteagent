@@ -93,7 +93,7 @@ if ( is_wp_error( $clarification ) ) {
 $request_timeout = new ReflectionMethod( Site_Agent_OpenAI_Client::class, 'request_timeout' );
 $request_timeout->setAccessible( true );
 $bounded_timeout = $request_timeout->invoke( null, 110.0, 60.0 );
-if ( 42 !== $bounded_timeout ) {
+if ( 24 !== $bounded_timeout ) {
 	$failures++;
 	fwrite( STDERR, "FAIL provider timeout is not bounded below the hosting window" . PHP_EOL );
 } else {

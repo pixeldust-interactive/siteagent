@@ -6,9 +6,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Site_Agent_OpenAI_Client {
 	private const ENDPOINT = 'https://api.openai.com/v1/responses';
 	private const KEY_OPTION = 'site_agent_openai_credential';
-	private const TURN_BUDGET_SECONDS = 50;
+	private const TURN_BUDGET_SECONDS = 32;
 	private const RESPONSE_HEADROOM_SECONDS = 8;
-	private const MAX_REQUEST_TIMEOUT_SECONDS = 42;
+	private const MAX_REQUEST_TIMEOUT_SECONDS = 24;
 	private const MIN_REQUEST_TIMEOUT_SECONDS = 5;
 
 	public static function is_configured(): bool {

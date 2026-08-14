@@ -82,6 +82,7 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 == Changelog ==
 
 = 0.2.7 =
+* Release blocker fixes: Jira SA-11 and SA-12.
 * Answered current Site Agent version questions from authoritative live plugin state without a slow two-stage provider round trip.
 * Moved `chat_completed` to a separate browser-render receipt so disconnected responses remain `chat_response_ready`, not falsely visible completions.
 * Reduced the shared provider budget below the observed gateway boundary and added clear Retry/Edit recovery without duplicating the user turn.

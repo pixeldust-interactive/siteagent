@@ -3,7 +3,7 @@
  * Plugin Name: Site Agent
  * Plugin URI: https://askmaisy.com/
  * Description: A private AI site administration agent that can inspect a WordPress site, answer administrative questions, propose controlled changes, record them, and roll supported changes back.
- * Version: 0.3.1
+ * Version: 0.3.2
  * Requires at least: 6.5
  * Requires PHP: 8.0
  * Author: Maisy
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SITE_AGENT_VERSION', '0.3.1' );
+define( 'SITE_AGENT_VERSION', '0.3.2' );
 define( 'SITE_AGENT_FILE', __FILE__ );
 define( 'SITE_AGENT_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SITE_AGENT_URL', plugin_dir_url( __FILE__ ) );

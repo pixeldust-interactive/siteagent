@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,10 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.3.2 =
+* Incremented the public asset cache identity for the completed Jira SA-17 Site Knowledge interface.
+* Kept contextual help inside the Site Agent panel at narrow mobile widths.
 
 = 0.3.1 =
 * Reworked Site Knowledge in plain language for Jira SA-17.

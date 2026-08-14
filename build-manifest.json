@@ -1,7 +1,7 @@
 {
     "schema": 1,
-    "release_id": "site-agent-0.3.1",
-    "version": "0.3.1",
+    "release_id": "site-agent-0.3.2",
+    "version": "0.3.2",
     "files": {
         "assets/admin.css": "1772269ba979fdedbaf2bdaf77e2e8df9ea70ad4c76e3d27c21cab66ce3f0a70",
         "assets/admin.js": "6f2e7e48ee70ba9b1240bb7588df45968fb52ff669f1582daa23d045f27db50f",
@@ -26,9 +26,9 @@
         "includes/class-rest-controller.php": "cb8a25d52c4ff0d608c9bf0301bc52b920396d759876a4c401d9ee36682ad91b",
         "includes/class-retention.php": "3264978ed54ddd275a38bcc7d54a22a1a92c10befdaa75ae12b82d2fa730c407",
         "includes/class-retriever.php": "dca33f9021cf057b98592b9a6361886f0724ac3ad5d037c7ddcf3953df2a5be9",
-        "README.md": "a51daab6e725c6b9816a34b9e30bfba51ecfecf1c3c2b8c9695e140069bd79b9",
-        "readme.txt": "a4933969859fa6872053e8c4c13072d55ad7dd1a2348281a62259c54161e29bb",
-        "site-agent.php": "4d83847398394afd69c21c543c580ccfc65cfb57210ea4f57cd5c427398c6433",
+        "README.md": "04573697f545a07798171971f99c8de25591dc617e7cb635e46b8be2d3e02ccd",
+        "readme.txt": "69f4ebb3d088e81ee9b881cb19a426032ef1b570fd1afd8bb9bd97fc9ae5d025",
+        "site-agent.php": "22b94e3cfc3d7c6a8998b147a39318fb31f1d89fbb6c7ada6799af779c43dcdd",
         "uninstall.php": "44b7c04c7156913ec74cf4ff2ebe2b23e8622fd36d66dddfa9355426e8572ff3"
     }
 }

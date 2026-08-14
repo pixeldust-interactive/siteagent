@@ -48,6 +48,24 @@ final class Site_Agent_Rest_Controller {
 		);
 		register_rest_route(
 			self::NS,
+			'/conversations',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'conversations' ),
+				'permission_callback' => self::permission( 'site_agent_chat' ),
+			)
+		);
+		register_rest_route(
+			self::NS,
+			'/conversations/(?P<id>[a-fA-F0-9-]{36})',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'conversation' ),
+				'permission_callback' => self::permission( 'site_agent_chat' ),
+			)
+		);
+		register_rest_route(
+			self::NS,
 			'/search',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -177,6 +195,16 @@ final class Site_Agent_Rest_Controller {
 
 	public function chat_rendered( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$result = Site_Agent_Agent::mark_rendered( (string) $request->get_param( 'completion_token' ) );
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
+	}
+
+	public function conversations( WP_REST_Request $request ): WP_REST_Response {
+		$limit = max( 1, min( 20, (int) ( $request->get_param( 'limit' ) ?: 12 ) ) );
+		return rest_ensure_response( Site_Agent_Agent::recent_conversations( $limit ) );
+	}
+
+	public function conversation( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$result = Site_Agent_Agent::conversation( (string) $request->get_param( 'id' ) );
 		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
 	}
 

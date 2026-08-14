@@ -401,6 +401,96 @@ final class Site_Agent_Agent {
 		return implode( "\n", $lines );
 	}
 
+	public static function recent_conversations( int $limit = 12 ): array {
+		$settings = get_option( 'site_agent_settings', array() );
+		if ( empty( $settings['store_conversations'] ) ) {
+			return array(
+				'enabled'       => false,
+				'conversations' => array(),
+			);
+		}
+
+		global $wpdb;
+		$table = Site_Agent_Database::table( 'messages' );
+		$limit = max( 1, min( 20, $limit ) );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT conversation_id, MAX(created_gmt) AS updated_gmt, COUNT(*) AS message_count
+				FROM {$table}
+				WHERE user_id = %d
+				GROUP BY conversation_id
+				ORDER BY updated_gmt DESC
+				LIMIT %d",
+				get_current_user_id(),
+				$limit
+			),
+			ARRAY_A
+		);
+
+		$conversations = array();
+		foreach ( $rows as $row ) {
+			$conversation_id = (string) $row['conversation_id'];
+			$first_prompt    = (string) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT content FROM {$table}
+					WHERE conversation_id = %s AND user_id = %d AND role = 'user'
+					ORDER BY id ASC LIMIT 1",
+					$conversation_id,
+					get_current_user_id()
+				)
+			);
+			$conversations[] = array(
+				'id'            => $conversation_id,
+				'title'         => wp_html_excerpt( sanitize_text_field( $first_prompt ), 80, '…' ),
+				'updated_gmt'   => (string) $row['updated_gmt'],
+				'message_count' => (int) $row['message_count'],
+			);
+		}
+
+		return array(
+			'enabled'       => true,
+			'conversations' => $conversations,
+		);
+	}
+
+	public static function conversation( string $conversation_id ): array|WP_Error {
+		$settings = get_option( 'site_agent_settings', array() );
+		if ( empty( $settings['store_conversations'] ) ) {
+			return new WP_Error( 'conversation_history_disabled', __( 'Local conversation history is turned off.', 'site-agent' ), array( 'status' => 404 ) );
+		}
+		if ( ! wp_is_uuid( $conversation_id ) ) {
+			return new WP_Error( 'invalid_conversation', __( 'That conversation could not be found.', 'site-agent' ), array( 'status' => 404 ) );
+		}
+
+		global $wpdb;
+		$table = Site_Agent_Database::table( 'messages' );
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT role, content, created_gmt FROM {$table}
+				WHERE conversation_id = %s AND user_id = %d
+				ORDER BY id ASC LIMIT 100",
+				$conversation_id,
+				get_current_user_id()
+			),
+			ARRAY_A
+		);
+		if ( empty( $rows ) ) {
+			return new WP_Error( 'conversation_not_found', __( 'That conversation could not be found.', 'site-agent' ), array( 'status' => 404 ) );
+		}
+
+		return array(
+			'conversation_id' => $conversation_id,
+			'messages'        => array_map(
+				static fn( array $row ): array => array(
+					'role'        => 'user' === $row['role'] ? 'user' : 'assistant',
+					'content'     => (string) $row['content'],
+					'created_gmt' => (string) $row['created_gmt'],
+				),
+				$rows
+			),
+		);
+	}
+
 	private static function history( string $conversation_id ): array {
 		$settings = get_option( 'site_agent_settings', array() );
 		if ( empty( $settings['store_conversations'] ) ) {

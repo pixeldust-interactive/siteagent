@@ -69,6 +69,10 @@ $assert = static function ( bool $condition, string $message ) use ( &$failures 
 
 $assert( isset( $GLOBALS['fixture_filters']['pre_http_request'] ), 'fixture registers provider interceptor on authorized host' );
 $assert( '' === Site_Agent_UAT_Provider_Fixture::filter_key( '' ), 'dummy key is absent while disabled' );
+$initial = $state();
+$assert( '0.1.1' === $initial['fixture_version'], 'fixture version is reported' );
+$assert( 64 === strlen( $initial['source_sha256'] ), 'fixture source SHA-256 is reported' );
+$assert( 'wp-content/mu-plugins/site-agent-uat-provider-fixture.php' === $initial['install_path'], 'fixture install path is reported' );
 
 foreach ( array( 'valid', 'fenced_json', 'surrounded_json', 'clarification', 'proposal', 'timeout' ) as $scenario ) {
 	$select( $scenario );

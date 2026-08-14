@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Site Agent UAT Provider Fixture
  * Description: Host-locked, no-network provider fault injection for Site Agent UAT.
- * Version: 0.2.0
+ * Version: 0.2.1
  * Author: Pixeldust Interactive
  */
 
@@ -28,18 +28,13 @@ if ( '' !== $site_agent_uat_mu_target && wp_normalize_path( __FILE__ ) !== wp_no
 				$allowed_previous = array(
 					'9ed08db9b9fa48128fb65b573b1796984c019972ec8862fe51d1d8edd3c8c622',
 					'665854d2029ca70a537b344dcb3e9263a2dec068e0426884f553ff448f1ea3b8',
+					'c5d6fc68b8e8224985cd5d6bd66162ab163a74c9d651a9db11910de3d9a7507c',
 				);
 				if ( ! hash_equals( $source_hash, $current_hash ) && ! in_array( strtolower( $current_hash ), $allowed_previous, true ) ) {
 					wp_die( esc_html__( 'A different Site Agent UAT fixture already exists. Nothing was overwritten.', 'site-agent' ) );
 				}
 			}
-			if ( ! wp_mkdir_p( dirname( $site_agent_uat_mu_target ) ) || ! copy( __FILE__, $site_agent_uat_mu_target ) ) {
-				wp_die( esc_html__( 'WordPress could not install the Site Agent UAT fixture as a must-use plugin.', 'site-agent' ) );
-			}
-		}
-	);
-	add_action(
-		'activated_plugin',
+			if ( ! wp_mkdir_p( dirname( $site_agent_uat_mu_target ) ) || ! {ÚÚ$z{-®éÜj×n',
 		static function ( string $plugin ) use ( $site_agent_uat_mu_target ): void {
 			if ( plugin_basename( __FILE__ ) === $plugin && file_exists( $site_agent_uat_mu_target ) ) {
 				deactivate_plugins( $plugin, true );
@@ -244,7 +239,7 @@ final class Site_Agent_UAT_Provider_Fixture {
 					return self::response_envelope(
 						(string) wp_json_encode(
 							array(
-								'answer'                 => '',
+								'answer'                 => 'I found the configured homepage and its editing system.',
 								'read_calls'             => array(
 									array(
 										'name' => 'site.search',
@@ -279,7 +274,7 @@ final class Site_Agent_UAT_Provider_Fixture {
 					return self::response_envelope(
 						(string) wp_json_encode(
 							array(
-								'answer'                 => '',
+								'answer'                 => 'I found the configured homepage and its editing system.',
 								'read_calls'             => array(),
 								'write_actions'          => array(),
 								'needs_clarification'    => true,
@@ -397,7 +392,7 @@ final class Site_Agent_UAT_Provider_Fixture {
 
 	private static function public_state( array $state ): array {
 		return array(
-			'fixture_version'   => '0.2.0',
+			'fixture_version'   => '0.2.1',
 			'source_sha256'     => hash_file( 'sha256', __FILE__ ),
 			'install_path'      => 'wp-content/mu-plugins/site-agent-uat-provider-fixture.php',
 			'authorized_host'   => self::authorized_host(),

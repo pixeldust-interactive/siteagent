@@ -29,7 +29,7 @@ Verify its SHA-256 against the committed source. Then make an authenticated admi
 
 `GET /wp-json/site-agent-uat/v1/state`
 
-The initial response must show `authorized_host: true`, `enabled: false`, fixture version `0.2.0`, the committed source SHA-256, and install path `wp-content/mu-plugins/site-agent-uat-provider-fixture.php`.
+The initial response must show `authorized_host: true`, `enabled: false`, fixture version `0.2.1`, the committed source SHA-256, and install path `wp-content/mu-plugins/site-agent-uat-provider-fixture.php`.
 
 Before each test, select one scenario:
 

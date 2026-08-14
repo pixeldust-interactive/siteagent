@@ -70,7 +70,7 @@ $assert = static function ( bool $condition, string $message ) use ( &$failures 
 $assert( isset( $GLOBALS['fixture_filters']['pre_http_request'] ), 'fixture registers provider interceptor on authorized host' );
 $assert( '' === Site_Agent_UAT_Provider_Fixture::filter_key( '' ), 'dummy key is absent while disabled' );
 $initial = $state();
-$assert( '0.2.0' === $initial['fixture_version'], 'fixture version is reported' );
+$assert( '0.2.1' === $initial['fixture_version'], 'fixture version is reported' );
 $assert( 64 === strlen( $initial['source_sha256'] ), 'fixture source SHA-256 is reported' );
 $assert( 'wp-content/mu-plugins/site-agent-uat-provider-fixture.php' === $initial['install_path'], 'fixture install path is reported' );
 
@@ -118,6 +118,7 @@ $sa16_second_text = (string) ( $sa16_second_body['output'][0]['content'][0]['tex
 $sa16_third_body = json_decode( (string) ( $sa16_third['body'] ?? '' ), true );
 $sa16_third_text = (string) ( $sa16_third_body['output'][0]['content'][0]['text'] ?? '' );
 $assert( 1 === substr_count( $sa16_second_text, '?' ) && str_contains( $sa16_second_text, 'What should the new section help visitors understand or do?' ), 'SA-16 fixture asks one plain-language content question' );
+$assert( str_contains( $sa16_second_text, '"answer":"I found the configured homepage and its editing system."' ), 'SA-16 clarification includes the non-empty provider answer required after live reads' );
 $assert( str_contains( $sa16_third_text, '"post_status":"draft"' ) && str_contains( $sa16_third_text, 'Nothing changes on the homepage' ), 'SA-16 fixture returns a reversible draft-only review proposal' );
 
 $select( 'valid' );

@@ -78,7 +78,7 @@ final class Site_Agent_Admin {
 				'providerReady'  => Site_Agent_OpenAI_Client::is_configured(),
 				'strings'        => array(
 					'working' => __( 'Working…', 'site-agent' ),
-					'error'   => __( 'Site Agent could not complete the request.', 'site-agent' ),
+					'error'   => __( 'Site Agent could not finish that request. Nothing was changed. Try again or edit the request.', 'site-agent' ),
 					'confirmHigh' => __( 'This plan contains a high-risk action. Approve and execute the exact plan shown?', 'site-agent' ),
 					'complete'=> __( 'Completed.', 'site-agent' ),
 				),

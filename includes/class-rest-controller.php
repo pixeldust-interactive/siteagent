@@ -39,6 +39,15 @@ final class Site_Agent_Rest_Controller {
 		);
 		register_rest_route(
 			self::NS,
+			'/chat/rendered',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'chat_rendered' ),
+				'permission_callback' => self::permission( 'site_agent_chat' ),
+			)
+		);
+		register_rest_route(
+			self::NS,
 			'/search',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -163,6 +172,11 @@ final class Site_Agent_Rest_Controller {
 			(string) $request->get_param( 'conversation_id' ),
 			(string) $request->get_param( 'role' )
 		);
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
+	}
+
+	public function chat_rendered( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$result = Site_Agent_Agent::mark_rendered( (string) $request->get_param( 'completion_token' ) );
 		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
 	}
 

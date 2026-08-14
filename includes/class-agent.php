@@ -53,6 +53,28 @@ final class Site_Agent_Agent {
 		$redacted_prompt = Site_Agent_Redactor::redact_string( $prompt );
 		$context = Site_Agent_Retriever::context( $redacted_prompt );
 		$history = self::history( $conversation_id );
+		$live_answer = self::authoritative_live_answer( $redacted_prompt );
+		if ( null !== $live_answer ) {
+			$ids = self::store_turn( $conversation_id, $redacted_prompt, $live_answer['answer'], array( 'provider' => 'live_wordpress', 'read_tools' => $live_answer['read_tools'] ) );
+			$completion_token = self::issue_completion_receipt( $conversation_id, $live_answer['read_tools'], false );
+			Site_Agent_Audit_Log::record(
+				'chat_response_ready',
+				array( 'conversation_id' => $conversation_id, 'provider' => 'live_wordpress', 'read_tools' => $live_answer['read_tools'], 'has_proposal' => false ),
+				'info',
+				get_current_user_id(),
+				$redacted_prompt
+			);
+			return array(
+				'conversation_id'  => $conversation_id,
+				'message_ids'      => $ids,
+				'answer'           => $live_answer['answer'],
+				'sources'          => $live_answer['sources'],
+				'tool_results'     => array(),
+				'proposal'         => null,
+				'provider'         => 'live_wordpress',
+				'completion_token' => $completion_token,
+			);
+		}
 
 		if ( ! Site_Agent_OpenAI_Client::is_configured() ) {
 			$answer = self::local_fallback( $redacted_prompt, $context );
@@ -177,8 +199,9 @@ final class Site_Agent_Agent {
 				'has_proposal'  => null !== $proposal,
 			)
 		);
+		$completion_token = self::issue_completion_receipt( $conversation_id, array_column( $tool_results, 'name' ), null !== $proposal );
 		Site_Agent_Audit_Log::record(
-			'chat_completed',
+			'chat_response_ready',
 			array(
 				'conversation_id' => $conversation_id,
 				'role'            => $role,
@@ -199,7 +222,67 @@ final class Site_Agent_Agent {
 			'tool_results'    => $tool_results,
 			'proposal'        => $proposal,
 			'provider'        => 'openai',
+			'completion_token' => $completion_token,
 		);
+	}
+
+	public static function mark_rendered( string $completion_token ): array|WP_Error {
+		$completion_token = trim( $completion_token );
+		if ( ! wp_is_uuid( $completion_token ) ) {
+			return new WP_Error( 'invalid_completion_token', __( 'The visible-completion receipt is invalid.', 'site-agent' ) );
+		}
+		$key = 'site_agent_completion_' . str_replace( '-', '', $completion_token );
+		$receipt = get_transient( $key );
+		if ( ! is_array( $receipt ) || (int) ( $receipt['user_id'] ?? 0 ) !== get_current_user_id() ) {
+			return new WP_Error( 'completion_receipt_expired', __( 'The visible-completion receipt expired or belongs to another user.', 'site-agent' ) );
+		}
+		delete_transient( $key );
+		Site_Agent_Audit_Log::record(
+			'chat_completed',
+			array(
+				'conversation_id' => (string) ( $receipt['conversation_id'] ?? '' ),
+				'read_tools'      => (array) ( $receipt['read_tools'] ?? array() ),
+				'has_proposal'    => ! empty( $receipt['has_proposal'] ),
+				'rendered'        => true,
+			),
+			'info',
+			get_current_user_id()
+		);
+		return array( 'completed' => true );
+	}
+
+	private static function authoritative_live_answer( string $prompt ): ?array {
+		if ( 1 !== preg_match( '/\b(?:what|which|current|installed|running|verify|version)\b/i', $prompt )
+			|| 1 !== preg_match( '/\bsite\s*agent\b/i', $prompt )
+			|| 1 !== preg_match( '/\b(?:version|installed|active|running)\b/i', $prompt ) ) {
+			return null;
+		}
+		return array(
+			'answer'      => sprintf(
+				/* translators: %s: installed plugin version. */
+				__( 'Site Agent %s is installed and active. I verified this from the live plugin status just now.', 'site-agent' ),
+				SITE_AGENT_VERSION
+			),
+			'read_tools'  => array( 'plugins.list' ),
+			'sources'     => array(
+				array( 'title' => __( 'Installed plugins (live)', 'site-agent' ), 'type' => 'live_status', 'object_id' => 'site-agent' ),
+			),
+		);
+	}
+
+	private static function issue_completion_receipt( string $conversation_id, array $read_tools, bool $has_proposal ): string {
+		$token = wp_generate_uuid4();
+		set_transient(
+			'site_agent_completion_' . str_replace( '-', '', $token ),
+			array(
+				'user_id'         => get_current_user_id(),
+				'conversation_id' => $conversation_id,
+				'read_tools'      => array_values( array_map( 'sanitize_key', $read_tools ) ),
+				'has_proposal'    => $has_proposal,
+			),
+			10 * MINUTE_IN_SECONDS
+		);
+		return $token;
 	}
 
 	private static function run_read_calls( array $calls ): array {

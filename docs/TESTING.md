@@ -8,6 +8,8 @@ Run `php tests/openai-key-lifecycle-test.php` to cover missing, invalid, valid, 
 
 Run `node tests/admin-keyboard-test.js` to verify that starter prompts respond exactly once to Enter, Space, and pointer activation and move focus to the populated composer.
 
+Run `node tests/admin-knowledge-test.js` to exercise populated-index result rendering and verify the Site Knowledge purpose, empty/stale next action, accessible help, professional copy, readable summaries, and progressive technical disclosure.
+
 Run:
 
 ```bash

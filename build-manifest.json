@@ -1,13 +1,13 @@
 {
     "schema": 1,
-    "release_id": "site-agent-0.3.0",
-    "version": "0.3.0",
+    "release_id": "site-agent-0.3.1",
+    "version": "0.3.1",
     "files": {
-        "assets/admin.css": "53cb5e283fc4598bd187bb3d3b7588219c75f730c6b673702fcc1229df0dbe44",
-        "assets/admin.js": "7f2628af0cf64321b815769cc59ccf165b4b31c47810465172170871e5b79096",
+        "assets/admin.css": "4b753cb0e2c047648eb593af289414e2e0c8acc582eb3688767773599bf9ca5b",
+        "assets/admin.js": "6f2e7e48ee70ba9b1240bb7588df45968fb52ff669f1582daa23d045f27db50f",
         "includes/class-action-registry.php": "9362ad13d944ea034c06813b4d24fe644756530b66e2ba89193889104fd15e8b",
         "includes/class-activator.php": "ffabc0dccfe3d1cc3a69f1e7ad39ab4bd1cbce64f7b26f82b4de87124977d6ce",
-        "includes/class-admin.php": "40066cd839d08a39c67e319652c52412cec5c6512374754762d7aa4a0358863c",
+        "includes/class-admin.php": "72588c391e10e43ce86562c7eea38e4e026107119313414f9e6a63b9a5b9b1b9",
         "includes/class-agent.php": "35300d0e3c96b49a7314a85564f31b7cc7d0d392e7bb5e485311cc7dd9780884",
         "includes/class-approval-service.php": "92b8a7661da4cbce519cce2f520fe8c1751b340453877aa8e8d89b525c02780b",
         "includes/class-audit-log.php": "b80977f39b4fd9f62b8a48df57c791b831cacd30bbd95d7871da4cd639438634",
@@ -26,9 +26,9 @@
         "includes/class-rest-controller.php": "cb8a25d52c4ff0d608c9bf0301bc52b920396d759876a4c401d9ee36682ad91b",
         "includes/class-retention.php": "3264978ed54ddd275a38bcc7d54a22a1a92c10befdaa75ae12b82d2fa730c407",
         "includes/class-retriever.php": "dca33f9021cf057b98592b9a6361886f0724ac3ad5d037c7ddcf3953df2a5be9",
-        "README.md": "40609b8dd4a57e20cd7cbe3c30d27ae544ac186deae8694f87c43e0b9bf8ffd8",
-        "readme.txt": "627ec92c69abca6d39e1fa19696bf983a6d69dadd4c5e7e5284262dea99430e9",
-        "site-agent.php": "64972b5637148d5506180beffac89a8136173a3fded18ba7aee341e114494b41",
+        "README.md": "a51daab6e725c6b9816a34b9e30bfba51ecfecf1c3c2b8c9695e140069bd79b9",
+        "readme.txt": "a4933969859fa6872053e8c4c13072d55ad7dd1a2348281a62259c54161e29bb",
+        "site-agent.php": "4d83847398394afd69c21c543c580ccfc65cfb57210ea4f57cd5c427398c6433",
         "uninstall.php": "44b7c04c7156913ec74cf4ff2ebe2b23e8622fd36d66dddfa9355426e8572ff3"
     }
 }

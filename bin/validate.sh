@@ -22,6 +22,7 @@ php bin/generate-build-manifest.php --check
 if command -v node >/dev/null 2>&1; then
 	node --check assets/admin.js
 	node tests/admin-keyboard-test.js
+	node tests/admin-knowledge-test.js
 fi
 
 echo "Site Agent validation passed."

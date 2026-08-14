@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.2.5
+Stable tag: 0.2.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,12 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.2.6 =
+* Bounded the complete chat provider workflow below common hosting gateway limits.
+* Prevented network timeouts from triggering duplicate structured-output fallback requests.
+* Added specific, recoverable timeout messages in both the REST and browser layers.
+* Added regression coverage for provider deadlines and retry eligibility.
 
 = 0.2.5 =
 * Added deterministic API-key lifecycle tests covering missing, invalid, valid, replaced, rejected-replacement, and removed states.

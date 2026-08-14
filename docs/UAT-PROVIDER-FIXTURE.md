@@ -2,7 +2,7 @@
 
 This fixture deterministically exercises Site Agent's real WordPress REST, browser UI, parser, timeout, retry, and audit paths without a provider credential or outbound OpenAI request.
 
-It is test tooling, not Site Agent product code. The source lives at `tests/uat/site-agent-uat-provider-fixture.php`, outside the plugin release allowlist. It must never be copied into `site-agent/`, included in a release ZIP, or merged into PR #10.
+It is test tooling, not Site Agent product code. The source lives at `tests/uat/site-agent-uat-provider-fixture.php`, outside the plugin release allowlist. It must never be copied into `site-agent/`, included in a release ZIP, or merged into a Site Agent release PR, including PR #15.
 
 ## Safety boundary
 
@@ -29,7 +29,7 @@ Verify its SHA-256 against the committed source. Then make an authenticated admi
 
 `GET /wp-json/site-agent-uat/v1/state`
 
-The initial response must show `authorized_host: true`, `enabled: false`, fixture version `0.1.1`, the committed source SHA-256, and install path `wp-content/mu-plugins/site-agent-uat-provider-fixture.php`.
+The initial response must show `authorized_host: true`, `enabled: false`, fixture version `0.2.2`, the committed source SHA-256, and install path `wp-content/mu-plugins/site-agent-uat-provider-fixture.php`.
 
 Before each test, select one scenario:
 
@@ -40,6 +40,25 @@ Before each test, select one scenario:
 ```
 
 Supported scenarios are returned by the GET response. After one Site Agent chat request, read the state again and verify `consumed: true`, the expected request count, and local fixture outcomes.
+
+### SA-3 proposal card
+
+`proposal` is a deterministic two-provider-call scenario within one Site Agent chat turn:
+
+1. The fixture requests a bounded `site.search` read and remains unconsumed.
+2. It refuses to advance unless the post-read provider payload contains validated `site.search` result data. It then returns the terminal review-only `option.update` proposal and consumes the scenario.
+
+This sequence matches Site Agent's accepted read-before-write planning flow. It prevents the fixture from being consumed before the required post-tool provider turn. UAT must render and inspect the proposal card, correlate its audit evidence, and stop without approving or executing the action.
+
+### SA-16 homepage conversation
+
+`sa16_homepage_flow` is a three-provider-call scenario spanning two Site Agent chat turns. It remains selected until the full path completes:
+
+1. The fixture asks Site Agent to run `site.search` for the configured homepage/editor evidence and `content.get` for the authorized test homepage.
+2. It refuses to advance unless validated tool data contains the live `page_on_front`, front-page, `WP Maisy`, active Twenty Twenty-Five, and content-read evidence. It then asks exactly one plain-language content-goal question.
+3. Submit the exact test answer `Help visitors understand the eight focused WordPress tools and choose the right next step.` The fixture returns a draft-only review proposal and consumes the scenario.
+
+The proposal creates only a draft preview page if an administrator separately approves and executes it. UAT must stop at review, confirm zero executed writes, and never approve the plan.
 
 ## Required UAT scenarios
 
@@ -55,7 +74,7 @@ Supported scenarios are returned by the GET response. After one Site Agent chat 
 - `read_tool_roundtrip`
 - `timeout`
 
-For every scenario, record exact Site Agent 0.2.7 build/manifest identity, the visible result, Site Agent audit correlation, fixture state/events, idle composer state, and zero executed writes. For failure cases, verify a specific safe message and Retry/Edit controls. Retry must keep one user turn and create at most one new attempt.
+For every scenario, record the exact installed Site Agent build/manifest identity, the visible result, Site Agent audit correlation, fixture state/events, idle composer state, and zero executed writes. For failure cases, verify a specific safe message and Retry/Edit controls. Retry must keep one user turn and create at most one new attempt.
 
 ## Teardown
 
@@ -65,4 +84,3 @@ For every scenario, record exact Site Agent 0.2.7 build/manifest identity, the v
 4. Read Site Agent status and verify version/release/manifest are unchanged and provider state is `local`, key source `none`, and key stored `false`.
 
 Do not install or run this fixture on AskMaisy or any other host.
-

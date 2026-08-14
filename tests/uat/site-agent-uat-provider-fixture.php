@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Site Agent UAT Provider Fixture
  * Description: Host-locked, no-network provider fault injection for Site Agent UAT.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: Pixeldust Interactive
  */
 
@@ -22,8 +22,13 @@ if ( '' !== $site_agent_uat_mu_target && wp_normalize_path( __FILE__ ) !== wp_no
 			if ( ! hash_equals( 'maisy.wpenginepowered.com', $host ) ) {
 				wp_die( esc_html__( 'This UAT fixture can only be installed on the authorized Maisy test host.', 'site-agent' ) );
 			}
-			if ( file_exists( $site_agent_uat_mu_target ) && ! hash_equals( hash_file( 'sha256', __FILE__ ), hash_file( 'sha256', $site_agent_uat_mu_target ) ) ) {
-				wp_die( esc_html__( 'A different Site Agent UAT fixture already exists. Nothing was overwritten.', 'site-agent' ) );
+			if ( file_exists( $site_agent_uat_mu_target ) ) {
+				$current_hash = hash_file( 'sha256', $site_agent_uat_mu_target );
+				$source_hash = hash_file( 'sha256', __FILE__ );
+				$allowed_previous = array( '9ed08db9b9fa48128fb65b573b1796984c019972ec8862fe51d1d8edd3c8c622' );
+				if ( ! hash_equals( $source_hash, $current_hash ) && ! in_array( strtolower( $current_hash ), $allowed_previous, true ) ) {
+					wp_die( esc_html__( 'A different Site Agent UAT fixture already exists. Nothing was overwritten.', 'site-agent' ) );
+				}
 			}
 			if ( ! wp_mkdir_p( dirname( $site_agent_uat_mu_target ) ) || ! copy( __FILE__, $site_agent_uat_mu_target ) ) {
 				wp_die( esc_html__( 'WordPress could not install the Site Agent UAT fixture as a must-use plugin.', 'site-agent' ) );
@@ -217,7 +222,7 @@ final class Site_Agent_UAT_Provider_Fixture {
 			case 'clarification':
 				return self::response_envelope( wp_json_encode( array( 'answer' => '', 'read_calls' => array(), 'write_actions' => array(), 'needs_clarification' => true, 'clarification_question' => 'Which page should I update?' ) ) );
 			case 'proposal':
-				return self::response_envelope( wp_json_encode( array( 'answer' => 'I prepared a review-only proposal. Nothing has been executed.', 'read_calls' => array(), 'write_actions' => array( array( 'name' => 'option.update', 'args' => array( 'name' => 'blogdescription', 'value' => 'UAT fixture proposal - do not execute' ) ) ), 'needs_clarification' => false, 'clarification_question' => '' ) ) );
+				return self::response_envelope( wp_json_encode( array( 'answer' => 'I prepared a review-only proposal. Nothing has been executed.', 'read_calls' => array(), 'write_actions' => array( array( 'name' => 'option.update', 'args' => array( 'option' => 'blogdescription', 'value' => 'UAT fixture proposal - do not execute' ) ) ), 'needs_clarification' => false, 'clarification_question' => '' ) ) );
 			case 'read_tool_roundtrip':
 				if ( 1 === $step ) {
 					return self::response_envelope( wp_json_encode( array( 'answer' => '', 'read_calls' => array( array( 'name' => 'plugins.list', 'args' => array() ) ), 'write_actions' => array(), 'needs_clarification' => false, 'clarification_question' => '' ) ) );
@@ -293,7 +298,9 @@ final class Site_Agent_UAT_Provider_Fixture {
 
 	private static function public_state( array $state ): array {
 		return array(
-			'fixture_version' => '0.1.0',
+			'fixture_version' => '0.1.1',
+			'source_sha256'   => hash_file( 'sha256', __FILE__ ),
+			'install_path'    => 'wp-content/mu-plugins/site-agent-uat-provider-fixture.php',
 			'authorized_host' => self::authorized_host(),
 			'enabled'         => (bool) $state['enabled'],
 			'scenario'        => (string) $state['scenario'],

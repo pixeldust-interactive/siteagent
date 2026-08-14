@@ -73,7 +73,7 @@ for (const key of ['Enter', ' ']) {
 	chat.listeners.keydown({
 		key,
 		repeat: false,
-		target: { closest: () => starter },
+		target: { closest: (selector) => selector === 'button.site-agent-starter[data-prompt]' ? starter : null },
 		preventDefault() { prevented += 1; },
 		stopPropagation() { stopped += 1; },
 	});
@@ -81,6 +81,26 @@ for (const key of ['Enter', ' ']) {
 	assert.strictEqual(prompt.focusCount, 1, `${key} moves focus to the composer once`);
 	assert.strictEqual(prevented, 1, `${key} prevents a synthesized duplicate click`);
 	assert.strictEqual(stopped, 1, `${key} does not bubble into the composer handler`);
+}
+
+for (const key of ['Enter', ' ']) {
+	let prevented = 0;
+	let stopped = 0;
+	chat.listeners.keydown({
+		key,
+		repeat: false,
+		target: {
+			closest(selector) {
+				if (selector.startsWith('summary')) return this;
+				if (selector === 'button.site-agent-starter[data-prompt]') return { dataset: { prompt: 'Must not activate' } };
+				return null;
+			},
+		},
+		preventDefault() { prevented += 1; },
+		stopPropagation() { stopped += 1; },
+	});
+	assert.strictEqual(prevented, 0, `${key === ' ' ? 'Space' : key} is not cancelled on a native summary`);
+	assert.strictEqual(stopped, 0, `${key === ' ' ? 'Space' : key} is not claimed by the starter delegate`);
 }
 
 prompt.value = '';

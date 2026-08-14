@@ -181,6 +181,18 @@ form.requestSubmit = () => {
 	assert.ok(technical, 'canonical action data remains available on demand');
 	assert.strictEqual(technical.tagName, 'DETAILS', 'technical data uses a collapsed disclosure');
 	assert.strictEqual(technical.children[0].textContent, 'Technical details', 'technical disclosure has a readable label');
+	for (const key of ['Enter', ' ']) {
+		let prevented = 0;
+		let stopped = 0;
+		technical.children[0].listeners.keydown({
+			key,
+			repeat: false,
+			preventDefault() { prevented += 1; },
+			stopPropagation() { stopped += 1; },
+		});
+		assert.strictEqual(prevented, 0, `${key === ' ' ? 'Space' : key} preserves the native disclosure action`);
+		assert.strictEqual(stopped, 1, `${key === ' ' ? 'Space' : key} stays out of the delegated starter handler`);
+	}
 	assert.match(technical.children[1].textContent, /blogdescription/, 'internal option name is retained only in technical details');
 	assert.doesNotMatch(proposal.children[1].textContent + proposal.children[2].textContent, /blogdescription|option\.update|\{/, 'internal names and JSON do not lead the proposal');
 	proposal.querySelector('.site-agent-proposal-controls').children[1].listeners.click();

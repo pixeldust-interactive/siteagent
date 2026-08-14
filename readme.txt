@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.3.6
+Stable tag: 0.3.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,11 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.3.7 =
+* Preserved native Enter and Space behavior on Technical details disclosures in Jira SA-6 action cards.
+* Restricted delegated starter-key handling to actual starter buttons while keeping send-on-Enter scoped to the chat composer.
+* Added disclosure and starter-key regression coverage for the keyboard interaction boundary.
 
 = 0.3.6 =
 * Replaced raw option names and JSON-led proposal cards with plain-language Jira SA-6 previews.

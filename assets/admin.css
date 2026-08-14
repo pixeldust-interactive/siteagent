@@ -95,6 +95,7 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	position: relative;
 }
 
 .site-agent-title-with-help h2 {
@@ -103,7 +104,7 @@
 
 .site-agent-help {
 	display: inline-block;
-	position: relative;
+	position: static;
 }
 
 .site-agent-help > summary {
@@ -132,6 +133,7 @@
 .site-agent-help-content {
 	background: #1d2327;
 	border-radius: 8px;
+	box-sizing: border-box;
 	box-shadow: var(--sa-shadow);
 	color: #fff;
 	display: none;

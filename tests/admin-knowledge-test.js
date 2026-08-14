@@ -103,6 +103,8 @@ assert.strictEqual(typeof form.listeners.submit, 'function', 'knowledge search b
 	assert.match(php, /<details class="site-agent-help">/, 'help uses a native disclosure control');
 	assert.match(css, /\.site-agent-help:hover[\s\S]*\.site-agent-help:focus-within/, 'help supports hover and keyboard focus');
 	assert.match(css, /height:\s*40px[\s\S]*width:\s*40px/, 'help target meets the minimum touch size');
+	assert.match(css, /\.site-agent-title-with-help\s*\{[\s\S]*position:\s*relative/, 'help content is anchored to the full title row');
+	assert.match(css, /\.site-agent-help-content\s*\{[\s\S]*box-sizing:\s*border-box/, 'help content width includes padding on narrow screens');
 
 	console.log('PASS Site Knowledge uses plain language, readable results, and progressive disclosure');
 })().catch((error) => {

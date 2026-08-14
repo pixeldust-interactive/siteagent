@@ -3,7 +3,7 @@
     "release_id": "site-agent-0.3.1",
     "version": "0.3.1",
     "files": {
-        "assets/admin.css": "4b753cb0e2c047648eb593af289414e2e0c8acc582eb3688767773599bf9ca5b",
+        "assets/admin.css": "1772269ba979fdedbaf2bdaf77e2e8df9ea70ad4c76e3d27c21cab66ce3f0a70",
         "assets/admin.js": "6f2e7e48ee70ba9b1240bb7588df45968fb52ff669f1582daa23d045f27db50f",
         "includes/class-action-registry.php": "9362ad13d944ea034c06813b4d24fe644756530b66e2ba89193889104fd15e8b",
         "includes/class-activator.php": "ffabc0dccfe3d1cc3a69f1e7ad39ab4bd1cbce64f7b26f82b4de87124977d6ce",

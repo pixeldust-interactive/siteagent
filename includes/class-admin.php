@@ -149,6 +149,8 @@ final class Site_Agent_Admin {
 	}
 
 	private function render_chat(): void {
+		$settings            = get_option( 'site_agent_settings', array() );
+		$history_is_enabled  = ! empty( $settings['store_conversations'] );
 		if ( ! Site_Agent_OpenAI_Client::is_configured() ) {
 			$dismissed = (bool) get_user_meta( get_current_user_id(), self::SETUP_DISMISSED_META, true );
 			if ( $dismissed ) {
@@ -191,6 +193,14 @@ final class Site_Agent_Admin {
 					<?php endforeach; ?>
 				</select>
 				<button type="button" class="button" id="site-agent-new-chat"><?php esc_html_e( 'New conversation', 'site-agent' ); ?></button>
+				<?php if ( $history_is_enabled ) : ?>
+					<details class="site-agent-conversation-history">
+						<summary><?php esc_html_e( 'Recent conversations', 'site-agent' ); ?></summary>
+						<div id="site-agent-conversation-list" class="site-agent-conversation-list" role="list" aria-live="polite">
+							<p class="description"><?php esc_html_e( 'Loading recent conversations…', 'site-agent' ); ?></p>
+						</div>
+					</details>
+				<?php endif; ?>
 			</div>
 			<div id="site-agent-chat" class="site-agent-chat" role="log" aria-live="polite" aria-relevant="additions">
 				<div class="site-agent-message is-agent"><div class="site-agent-message-label"><?php esc_html_e( 'Site Agent', 'site-agent' ); ?></div><div class="site-agent-message-body"><?php esc_html_e( 'What would you like to know or change?', 'site-agent' ); ?></div></div>
@@ -198,7 +208,6 @@ final class Site_Agent_Admin {
 					<?php foreach ( array( __( 'What changed on my site this week?', 'site-agent' ), __( 'Is anything on my site unhealthy?', 'site-agent' ), __( 'Which pages need attention?', 'site-agent' ), __( 'What could break if I remove a plugin?', 'site-agent' ) ) as $starter ) : ?><button type="button" class="site-agent-starter" data-prompt="<?php echo esc_attr( $starter ); ?>"><?php echo esc_html( $starter ); ?></button><?php endforeach; ?>
 				</div>
 			</div>
-			<div id="site-agent-proposals"></div>
 			<form id="site-agent-chat-form" class="site-agent-chat-form">
 				<label class="screen-reader-text" for="site-agent-prompt"><?php esc_html_e( 'Question or instruction', 'site-agent' ); ?></label>
 				<textarea id="site-agent-prompt" rows="3" maxlength="12000" aria-describedby="site-agent-composer-help" placeholder="<?php esc_attr_e( 'Message Site Agent…', 'site-agent' ); ?>"></textarea>

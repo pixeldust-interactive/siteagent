@@ -70,12 +70,43 @@
 	}
 
 	function appendMessage(container, who, text) {
-		if (!container) return;
+		if (!container) return null;
 		const wrap = el('div', `site-agent-message ${who === 'You' ? 'is-user' : 'is-agent'}`);
 		wrap.append(el('div', 'site-agent-message-label', who));
 		wrap.append(el('div', 'site-agent-message-body', text));
 		container.append(wrap);
 		wrap.scrollIntoView({ block: 'end', behavior: 'smooth' });
+		return wrap;
+	}
+
+	function appendWorkingMessage(container) {
+		const wrap = appendMessage(container, 'Site Agent', 'Working on your request');
+		if (!wrap) return null;
+		wrap.classList.add('is-working');
+		wrap.setAttribute('aria-label', 'Site Agent is working on your request');
+		const body = wrap.querySelector('.site-agent-message-body');
+		const dots = el('span', 'site-agent-working-dots');
+		dots.setAttribute('aria-hidden', 'true');
+		for (let index = 0; index < 3; index += 1) dots.append(el('span'));
+		body?.append(dots);
+		return wrap;
+	}
+
+	function appendFailure(container, message, onRetry, onEdit) {
+		const wrap = appendMessage(container, 'Site Agent', message);
+		if (!wrap) return null;
+		wrap.classList.add('is-error');
+		wrap.setAttribute('role', 'alert');
+		const recovery = el('div', 'site-agent-recovery');
+		const retry = el('button', 'button site-agent-retry', 'Try again');
+		retry.type = 'button';
+		retry.addEventListener('click', onRetry, { once: true });
+		const edit = el('button', 'button', 'Edit request');
+		edit.type = 'button';
+		edit.addEventListener('click', onEdit);
+		recovery.append(retry, edit);
+		wrap.append(recovery);
+		return wrap;
 	}
 
 	function appendWelcome(container) {
@@ -184,6 +215,55 @@
 		const status = document.getElementById('site-agent-chat-status');
 		const proposals = document.getElementById('site-agent-proposals');
 		const newChat = document.getElementById('site-agent-new-chat');
+		const conversationList = document.getElementById('site-agent-conversation-list');
+		let failedRequest = '';
+		const showConversation = (conversation) => {
+			conversationId = conversation.conversation_id || '';
+			clear(chat);
+			clear(proposals);
+			(conversation.messages || []).forEach((message) => {
+				appendMessage(chat, message.role === 'user' ? 'You' : 'Site Agent', message.content || '');
+			});
+			prompt.value = '';
+			failedRequest = '';
+			setStatus(status, 'Conversation opened.');
+			prompt.focus();
+		};
+		const loadConversationHistory = async () => {
+			if (!conversationList) return;
+			try {
+				const result = await api('/conversations?limit=12');
+				clear(conversationList);
+				if (!result.enabled || !result.conversations?.length) {
+					conversationList.append(el('p', 'description', 'No saved conversations yet.'));
+					return;
+				}
+				result.conversations.forEach((conversation) => {
+					const row = el('div', 'site-agent-conversation-row');
+					row.setAttribute('role', 'listitem');
+					const item = el('button', 'site-agent-conversation-item');
+					item.type = 'button';
+					item.append(el('strong', '', conversation.title || 'Untitled conversation'));
+					item.append(el('span', '', `${Number(conversation.message_count || 0)} messages`));
+					item.addEventListener('click', async () => {
+						item.disabled = true;
+						setStatus(status, 'Opening conversation…');
+						try {
+							showConversation(await api(`/conversations/${encodeURIComponent(conversation.id)}`));
+						} catch (error) {
+							setStatus(status, error.message, true);
+						} finally {
+							item.disabled = false;
+						}
+					});
+					row.append(item);
+					conversationList.append(row);
+				});
+			} catch (error) {
+				clear(conversationList);
+				conversationList.append(el('p', 'site-agent-status is-error', 'Recent conversations could not be loaded.'));
+			}
+		};
 		const activateStarter = (starter) => {
 			if (!starter) return;
 			prompt.value = starter.dataset.prompt || '';
@@ -193,6 +273,7 @@
 
 		newChat?.addEventListener('click', () => {
 			conversationId = '';
+			failedRequest = '';
 			clear(chat);
 			clear(proposals);
 			appendWelcome(chat);
@@ -224,17 +305,19 @@
 		form.addEventListener('submit', async (event) => {
 			event.preventDefault();
 			if (form.dataset.pending === '1') return;
-			const text = String(prompt.value || '').trim();
+			const text = String(prompt.value || failedRequest || '').trim();
 			if (!text) return;
 			const isRetry = form.dataset.retrying === '1';
 			delete form.dataset.retrying;
 			form.dataset.pending = '1';
-			form.querySelectorAll('.site-agent-recovery').forEach((node) => node.remove());
+			chat?.querySelectorAll('.site-agent-message.is-error').forEach((node) => node.remove());
 			if (!isRetry) appendMessage(chat, 'You', text);
 			prompt.value = '';
+			failedRequest = '';
 			clear(proposals);
 			setStatus(status, cfg.strings?.working || 'Working…');
 			form.querySelector('button[type="submit"]').disabled = true;
+			const working = appendWorkingMessage(chat);
 			try {
 				const result = await api('/chat', {
 					method: 'POST',
@@ -245,11 +328,12 @@
 						role: role?.value || 'site_administrator',
 					},
 				});
+				working?.remove();
 				conversationId = result.conversation_id || conversationId;
 				appendMessage(chat, 'Site Agent', result.answer || 'No answer was returned.');
 				renderSources(chat, result.sources || []);
 				if (result.notice) appendMessage(chat, 'System', result.notice);
-				renderProposal(proposals, result.proposal);
+				renderProposal(chat, result.proposal);
 				if (result.completion_token) {
 					try {
 						await api('/chat/rendered', { method: 'POST', body: { completion_token: result.completion_token } });
@@ -259,28 +343,32 @@
 					}
 				}
 				setStatus(status, '');
+				loadConversationHistory();
 			} catch (error) {
-				appendMessage(chat, 'System', error.message);
-				setStatus(status, error.message, true);
+				working?.remove();
+				failedRequest = text;
+				appendFailure(
+					chat,
+					error.message,
+					() => {
+						form.dataset.retrying = '1';
+						form.requestSubmit();
+					},
+					() => {
+						prompt.value = failedRequest;
+						prompt.focus();
+					}
+				);
+				setStatus(status, 'Request failed. Your draft is ready to retry or edit.', true);
 				prompt.value = text;
-				const recovery = el('span', 'site-agent-recovery');
-				const retry = el('button', 'button site-agent-retry', 'Retry');
-				retry.type = 'button';
-				retry.addEventListener('click', () => {
-					form.dataset.retrying = '1';
-					form.requestSubmit();
-				}, { once: true });
-				const edit = el('button', 'button', 'Edit request');
-				edit.type = 'button';
-				edit.addEventListener('click', () => prompt.focus());
-				recovery.append(retry, edit);
-				status.after(recovery);
 			} finally {
 				form.dataset.pending = '0';
 				form.querySelector('button[type="submit"]').disabled = false;
 				prompt.focus();
 			}
 		});
+
+		loadConversationHistory();
 	}
 
 	function setupIndex() {

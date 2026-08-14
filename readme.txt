@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.3.4
+Stable tag: 0.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,12 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.3.5 =
+* Kept working, source, proposal, failure, and recovery states inside the Jira SA-3 conversation flow.
+* Added draft-preserving Try again and Edit request controls without duplicate user turns.
+* Added bounded current-user recent conversation history when local storage is enabled.
+* Added active, success, failure, retry, history, accessibility, and reduced-motion regressions.
 
 = 0.3.4 =
 * Decoded one stored WordPress entity layer for readable Knowledge result titles in Jira SA-17.

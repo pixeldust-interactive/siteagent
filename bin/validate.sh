@@ -19,12 +19,14 @@ php tests/openai-key-lifecycle-test.php
 php tests/write-intent-test.php
 php tests/retriever-title-test.php
 php tests/index-content-test.php
+php tests/conversation-history-test.php
 php bin/generate-build-manifest.php --check
 
 if command -v node >/dev/null 2>&1; then
 	node --check assets/admin.js
 	node tests/admin-keyboard-test.js
 	node tests/admin-knowledge-test.js
+	node tests/admin-chat-flow-test.js
 fi
 
 echo "Site Agent validation passed."

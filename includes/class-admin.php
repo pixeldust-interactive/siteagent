@@ -70,6 +70,7 @@ final class Site_Agent_Admin {
 			'SiteAgentAdmin',
 			array(
 				'restUrl'        => esc_url_raw( rest_url( 'site-agent/v1' ) ),
+				'changesUrl'     => esc_url_raw( admin_url( 'admin.php?page=site-agent&tab=changes' ) ),
 				'nonce'          => wp_create_nonce( 'wp_rest' ),
 				'currentTab'     => $this->current_tab(),
 				'canManage'      => current_user_can( 'site_agent_manage' ),

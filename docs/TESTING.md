@@ -12,6 +12,8 @@ Run `node tests/admin-knowledge-test.js` to exercise populated-index result rend
 
 Run `node tests/admin-chat-flow-test.js` to cover the empty/history, active, completed, proposal, failed-send, edit, and retry states. It also verifies that the draft survives failure, Retry does not duplicate the user turn, completion receipts remain enabled, and working animation has a reduced-motion fallback.
 
+For Jira SA-6, the same regression uses an `option.update` proposal for the WordPress `blogdescription` field and verifies that the primary card says **site tagline**, the action-specific button names that scope, raw action names and JSON appear only in collapsed **Technical details**, Cancel sends no execution request, and the proposal remains box-contained at narrow widths.
+
 Run `php tests/conversation-history-test.php` to verify that recent conversations are bounded, disabled when local storage is off, and restricted to the current WordPress user at both list and message-read boundaries.
 
 Run:

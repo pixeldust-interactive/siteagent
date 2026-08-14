@@ -4,6 +4,7 @@
 	const cfg = window.SiteAgentAdmin || {};
 	const rootUrl = String(cfg.restUrl || '').replace(/\/+$/, '');
 	let conversationId = '';
+	let proposalSequence = 0;
 
 	const el = (tag, className, text) => {
 		const node = document.createElement(tag);
@@ -141,35 +142,117 @@
 		container.append(details);
 	}
 
+	function technicalDetails(payload) {
+		const details = el('details', 'site-agent-technical-details');
+		details.append(el('summary', '', 'Technical details'));
+		details.append(el('pre', 'site-agent-args', JSON.stringify(payload || {}, null, 2)));
+		return details;
+	}
+
+	function plainSettingName(option) {
+		return {
+			blogname: 'site title',
+			blogdescription: 'site tagline',
+			timezone_string: 'site time zone',
+			date_format: 'date format',
+			time_format: 'time format',
+			start_of_week: 'start of the week',
+			show_on_front: 'homepage display',
+			page_on_front: 'homepage',
+			page_for_posts: 'posts page',
+			posts_per_page: 'posts shown per page',
+			blog_public: 'search-engine visibility',
+		}[String(option || '')] || 'site setting';
+	}
+
+	function plainSettingValue(value) {
+		if (typeof value === 'boolean') return value ? 'on' : 'off';
+		if (typeof value !== 'string' && typeof value !== 'number') return 'a new value';
+		const text = String(value).trim();
+		return text ? text.slice(0, 160) : 'an empty value';
+	}
+
+	function actionPreview(action) {
+		const args = action?.args || {};
+		if (action?.name === 'option.update') {
+			return `Change the ${plainSettingName(args.option)} to “${plainSettingValue(args.value)}”.`;
+		}
+		return String(action?.preview || 'Make the proposed change.');
+	}
+
+	function confirmationLabel(actions, highestRisk) {
+		if (actions.length === 1) {
+			const action = actions[0];
+			const labels = {
+				'post.create': 'Create this draft',
+				'post.update': 'Update this page or post',
+				'post.trash': 'Move this item to Trash',
+				'post.meta.update': 'Update this page detail',
+				'seo.update': 'Update this search information',
+				'plugin.activate': 'Activate this plugin',
+				'plugin.deactivate': 'Deactivate this plugin',
+				'transients.delete_expired': 'Delete expired temporary data',
+				'rollback.perform': 'Roll back this change',
+			};
+			if (action?.name === 'option.update') return `Change the ${plainSettingName(action.args?.option)}`;
+			if (labels[action?.name]) return labels[action.name];
+		}
+		const count = actions.length || 1;
+		return highestRisk === 'high'
+			? `Approve ${count} high-impact change${count === 1 ? '' : 's'}`
+			: `Make ${count} change${count === 1 ? '' : 's'}`;
+	}
+
+	function renderExecutionOutcome(card, result) {
+		const results = Array.isArray(result?.results) ? result.results : [];
+		const outcome = el('section', 'site-agent-execution-outcome');
+		outcome.setAttribute('role', 'status');
+		outcome.append(el('h4', '', results.length === 1 ? 'Change complete' : `${results.length || 1} changes complete`));
+		outcome.append(el('p', '', results.length === 1 ? 'The requested change was completed.' : 'The requested changes were completed.'));
+		if (cfg.changesUrl) {
+			const ledger = el('a', 'button', 'View Change Ledger');
+			ledger.href = String(cfg.changesUrl);
+			outcome.append(ledger);
+		}
+		outcome.append(technicalDetails(result));
+		card.append(outcome);
+	}
+
 	function renderProposal(container, proposal) {
 		if (!container || !proposal?.plan || !proposal.approval_token) return;
 		const tokenBox = { value: String(proposal.approval_token) };
+		const actions = Array.isArray(proposal.plan.actions) ? proposal.plan.actions : [];
+		proposalSequence += 1;
+		const titleId = `site-agent-proposal-title-${proposalSequence}`;
 		const card = el('section', `site-agent-proposal risk-${proposal.plan.highest_risk || 'high'}`);
-		card.append(el('h3', '', 'Review the proposed change'));
+		card.setAttribute('aria-labelledby', titleId);
+		const title = el('h3', '', 'Review the proposed change');
+		title.id = titleId;
+		card.append(title);
 		if (proposal.plan.reason) card.append(el('p', 'site-agent-proposal-reason', proposal.plan.reason));
+		card.append(el('p', 'site-agent-proposal-intro', 'Review only — nothing changes until you choose the action below.'));
 
-		const list = el('ol');
-		(proposal.plan.actions || []).forEach((action) => {
+		const list = el('ol', 'site-agent-proposal-actions');
+		actions.forEach((action) => {
 			const item = el('li');
-			item.append(el('strong', '', action.preview || action.name));
+			item.append(el('strong', '', actionPreview(action)));
 			item.append(el('span', `site-agent-risk is-${action.risk}`, String(action.risk || 'high').toUpperCase()));
-			const args = el('pre', 'site-agent-args', JSON.stringify(action.args || {}, null, 2));
-			item.append(args);
+			item.append(technicalDetails({ action: action.name || '', details: action.args || {} }));
 			list.append(item);
 		});
 		card.append(list);
+		card.append(el('p', 'site-agent-proposal-note', 'Cancel leaves the site unchanged. After completion, rollback is offered in Change Ledger only when a verified snapshot supports it.'));
 
 		const controls = el('div', 'site-agent-proposal-controls');
-		const button = el(
-			'button',
-			'button button-primary',
-			proposal.plan.highest_risk === 'high' ? `Approve ${proposal.plan.actions?.length || 1} high-impact change${proposal.plan.actions?.length === 1 ? '' : 's'}` : `Make ${proposal.plan.actions?.length || 1} change${proposal.plan.actions?.length === 1 ? '' : 's'}`
-		);
+		const button = el('button', 'button button-primary', confirmationLabel(actions, proposal.plan.highest_risk));
 		button.type = 'button';
 		const status = el('span', 'site-agent-status');
 		const cancel = el('button', 'button', 'Cancel');
 		cancel.type = 'button';
-		cancel.addEventListener('click', () => card.remove());
+		cancel.addEventListener('click', () => {
+			tokenBox.value = '';
+			card.remove();
+		});
 		controls.append(button, cancel, status);
 		card.append(controls);
 		container.append(card);
@@ -192,15 +275,14 @@
 				tokenBox.value = '';
 				setStatus(status, cfg.strings?.complete || 'Completed.');
 				button.remove();
-				const output = el('pre', 'site-agent-result', JSON.stringify(result, null, 2));
-				card.append(output);
+				renderExecutionOutcome(card, result);
 				loadChanges();
 			} catch (error) {
 				tokenBox.value = '';
 				setStatus(status, error.message, true);
 				button.remove();
 				if (error.data?.results) {
-					card.append(el('pre', 'site-agent-result', JSON.stringify(error.data.results, null, 2)));
+					card.append(technicalDetails({ completed_steps: error.data.results }));
 				}
 			}
 		});

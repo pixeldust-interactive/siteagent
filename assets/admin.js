@@ -24,6 +24,9 @@
 
 	async function api(path, options = {}) {
 		const method = options.method || 'GET';
+		const timeoutMs = Number(options.timeoutMs || 0);
+		const controller = timeoutMs > 0 && typeof AbortController === 'function' ? new AbortController() : null;
+		const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 		const headers = {
 			'X-WP-Nonce': cfg.nonce,
 			'Accept': 'application/json',
@@ -34,12 +37,23 @@
 			credentials: 'same-origin',
 			cache: 'no-store',
 			redirect: 'error',
+			signal: controller?.signal,
 		};
 		if (options.body !== undefined) {
 			headers['Content-Type'] = 'application/json';
 			request.body = JSON.stringify(options.body);
 		}
-		const response = await fetch(rootUrl + path, request);
+		let response;
+		try {
+			response = await fetch(rootUrl + path, request);
+		} catch (error) {
+			if (controller?.signal.aborted) {
+				throw new Error('Site Agent stopped waiting before the hosting request limit. Nothing was changed. Try again or ask a shorter question.');
+			}
+			throw error;
+		} finally {
+			if (timeout) clearTimeout(timeout);
+		}
 		let data = {};
 		try {
 			data = await response.json();
@@ -222,6 +236,7 @@
 			try {
 				const result = await api('/chat', {
 					method: 'POST',
+					timeoutMs: 55000,
 					body: {
 						prompt: text,
 						conversation_id: conversationId,

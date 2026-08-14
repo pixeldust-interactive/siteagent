@@ -6,6 +6,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Site_Agent_OpenAI_Client {
 	private const ENDPOINT = 'https://api.openai.com/v1/responses';
 	private const KEY_OPTION = 'site_agent_openai_credential';
+	private const TURN_BUDGET_SECONDS = 50;
+	private const RESPONSE_HEADROOM_SECONDS = 8;
+	private const MAX_REQUEST_TIMEOUT_SECONDS = 42;
+	private const MIN_REQUEST_TIMEOUT_SECONDS = 5;
 
 	public static function is_configured(): bool {
 		return '' !== self::api_key();
@@ -36,6 +40,10 @@ final class Site_Agent_OpenAI_Client {
 			return 'server';
 		}
 		return get_option( self::KEY_OPTION, '' ) ? 'wordpress_encrypted' : 'none';
+	}
+
+	public static function turn_deadline(): float {
+		return microtime( true ) + self::TURN_BUDGET_SECONDS;
 	}
 
 	public static function save_key( string $key ): bool|WP_Error {
@@ -113,8 +121,10 @@ final class Site_Agent_OpenAI_Client {
 		string $prompt,
 		array $context,
 		array $tool_results = array(),
-		bool $require_write_plan = false
+		bool $require_write_plan = false,
+		?float $deadline = null
 	): array|WP_Error {
+		$deadline = $deadline ?? self::turn_deadline();
 		$key = self::api_key();
 		if ( '' === $key ) {
 			return new WP_Error( 'openai_not_configured', __( 'No OpenAI API key is available through wp-config.php, the environment, or the site_agent_openai_api_key filter.', 'site-agent' ) );
@@ -137,12 +147,12 @@ final class Site_Agent_OpenAI_Client {
 			$payload['input'][0]['content'] .= "\nThe user made an explicit site-change request. If it is supported and sufficiently specified, include one or more exact write_actions using the supplied contracts. A write action creates a review proposal only and never executes the change. If required arguments are missing, set needs_clarification true and ask for them. Do not return prose that merely describes a plan with an empty write_actions array.";
 		}
 
-		$response = self::request( $payload, $key );
-		if ( is_wp_error( $response ) ) {
+		$response = self::request( $payload, $key, $deadline );
+		if ( is_wp_error( $response ) && self::retry_without_structured_output( $response ) ) {
 			// Some compatible endpoints/models may not accept structured output. Retry once with a strict JSON instruction.
 			unset( $payload['text'] );
 			$payload['input'][0]['content'] .= "\nReturn exactly one valid JSON object matching the requested Site Agent response shape. Do not use Markdown fences or surrounding prose.";
-			$response = self::request( $payload, $key );
+			$response = self::request( $payload, $key, $deadline );
 		}
 		if ( is_wp_error( $response ) ) {
 			return $response;
@@ -155,9 +165,11 @@ final class Site_Agent_OpenAI_Client {
 			$payload['input'][0]['content'] .= $require_write_plan
 				? "\nYour previous response omitted the required proposal. Return exactly one complete JSON object containing supported write_actions, or set needs_clarification true with a specific question. Do not merely describe the plan in answer text."
 				: "\nYour previous response could not be validated. Return exactly one complete JSON object with non-empty answer text, plus read_calls, write_actions, needs_clarification, and clarification_question. Do not use Markdown fences or surrounding prose.";
-			$retry = self::request( $payload, $key );
+			$retry = self::request( $payload, $key, $deadline );
 			if ( ! is_wp_error( $retry ) ) {
 				$turn = self::enforce_write_plan( self::parse_response( $retry, $require_answer ), $require_write_plan );
+			} elseif ( 'provider_deadline_exceeded' === $retry->get_error_code() || 'provider_request_timeout' === $retry->get_error_code() ) {
+				$turn = $retry;
 			}
 		}
 
@@ -404,11 +416,15 @@ final class Site_Agent_OpenAI_Client {
 		);
 	}
 
-	private static function request( array $payload, string $key ): array|WP_Error {
+	private static function request( array $payload, string $key, float $deadline ): array|WP_Error {
+		$timeout = self::request_timeout( $deadline );
+		if ( is_wp_error( $timeout ) ) {
+			return $timeout;
+		}
 		$response = wp_remote_post(
 			self::ENDPOINT,
 			array(
-				'timeout' => 75,
+				'timeout' => $timeout,
 				'redirection' => 0,
 				'headers' => array(
 					'Authorization' => 'Bearer ' . $key,
@@ -420,9 +436,17 @@ final class Site_Agent_OpenAI_Client {
 		);
 
 		if ( is_wp_error( $response ) ) {
+			$message = Site_Agent_Redactor::redact_string( $response->get_error_message() );
+			if ( preg_match( '/(?:timed?\s*out|timeout|cURL error 28)/i', $message ) ) {
+				return new WP_Error(
+					'provider_request_timeout',
+					__( 'OpenAI did not respond within this site\'s safe request window. Nothing was changed. Try again or ask a shorter question.', 'site-agent' ),
+					array( 'status' => 504, 'timeout_seconds' => $timeout )
+				);
+			}
 			return new WP_Error(
 				'provider_request_failed',
-				Site_Agent_Redactor::redact_string( $response->get_error_message() )
+				$message
 			);
 		}
 
@@ -438,6 +462,28 @@ final class Site_Agent_OpenAI_Client {
 			);
 		}
 		return $data;
+	}
+
+	private static function request_timeout( float $deadline, ?float $now = null ): int|WP_Error {
+		$now = $now ?? microtime( true );
+		$available = (int) floor( $deadline - $now - self::RESPONSE_HEADROOM_SECONDS );
+		if ( $available < self::MIN_REQUEST_TIMEOUT_SECONDS ) {
+			return new WP_Error(
+				'provider_deadline_exceeded',
+				__( 'Site Agent stopped before the hosting request limit so it could return safely. Nothing was changed. Try again or ask a shorter question.', 'site-agent' ),
+				array( 'status' => 504 )
+			);
+		}
+		return min( self::MAX_REQUEST_TIMEOUT_SECONDS, $available );
+	}
+
+	private static function retry_without_structured_output( WP_Error $error ): bool {
+		if ( 'provider_http_error' !== $error->get_error_code() ) {
+			return false;
+		}
+		$data = $error->get_error_data();
+		$status = is_array( $data ) ? (int) ( $data['status'] ?? 0 ) : 0;
+		return in_array( $status, array( 400, 422 ), true );
 	}
 
 	private static function messages( string $system, array $history, string $prompt, array $context, array $tool_results ): array {

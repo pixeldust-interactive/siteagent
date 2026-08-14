@@ -90,6 +90,34 @@ if ( is_wp_error( $clarification ) ) {
 	echo "PASS explicit write request permits clarification" . PHP_EOL;
 }
 
+$request_timeout = new ReflectionMethod( Site_Agent_OpenAI_Client::class, 'request_timeout' );
+$request_timeout->setAccessible( true );
+$bounded_timeout = $request_timeout->invoke( null, 110.0, 60.0 );
+if ( 42 !== $bounded_timeout ) {
+	$failures++;
+	fwrite( STDERR, "FAIL provider timeout is not bounded below the hosting window" . PHP_EOL );
+} else {
+	echo "PASS provider timeout is bounded below the hosting window" . PHP_EOL;
+}
+$expired_timeout = $request_timeout->invoke( null, 70.0, 60.0 );
+if ( ! is_wp_error( $expired_timeout ) || 'provider_deadline_exceeded' !== $expired_timeout->get_error_code() ) {
+	$failures++;
+	fwrite( STDERR, "FAIL exhausted provider budget starts another request" . PHP_EOL );
+} else {
+	echo "PASS exhausted provider budget stops before the hosting limit" . PHP_EOL;
+}
+
+$fallback = new ReflectionMethod( Site_Agent_OpenAI_Client::class, 'retry_without_structured_output' );
+$fallback->setAccessible( true );
+$unsupported = $fallback->invoke( null, new WP_Error( 'provider_http_error', 'Unsupported format.', array( 'status' => 400 ) ) );
+$network_failure = $fallback->invoke( null, new WP_Error( 'provider_request_failed', 'Connection timed out.' ) );
+if ( true !== $unsupported || false !== $network_failure ) {
+	$failures++;
+	fwrite( STDERR, "FAIL network failures can trigger a duplicate unstructured provider request" . PHP_EOL );
+} else {
+	echo "PASS only structured-output compatibility errors trigger fallback" . PHP_EOL;
+}
+
 exit( $failures > 0 ? 1 : 0 );
 
 function response( string $text ): array {

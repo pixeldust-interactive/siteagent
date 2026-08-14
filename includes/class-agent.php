@@ -49,6 +49,7 @@ final class Site_Agent_Agent {
 		}
 		$role = isset( self::ROLES[ $role ] ) ? $role : 'site_administrator';
 		$conversation_id = wp_is_uuid( $conversation_id ) ? $conversation_id : wp_generate_uuid4();
+		$deadline = Site_Agent_OpenAI_Client::turn_deadline();
 		$redacted_prompt = Site_Agent_Redactor::redact_string( $prompt );
 		$context = Site_Agent_Retriever::context( $redacted_prompt );
 		$history = self::history( $conversation_id );
@@ -75,7 +76,7 @@ final class Site_Agent_Agent {
 		}
 
 		$system = self::system_prompt( $role );
-		$turn = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context );
+		$turn = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, array(), false, $deadline );
 		if ( is_wp_error( $turn ) ) {
 			$error_data = $turn->get_error_data();
 			Site_Agent_Audit_Log::record(
@@ -94,7 +95,7 @@ final class Site_Agent_Agent {
 
 		$tool_results = self::run_read_calls( (array) $turn['read_calls'] );
 		if ( ! empty( $tool_results ) ) {
-			$second = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, $tool_results );
+			$second = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, $tool_results, false, $deadline );
 			if ( is_wp_error( $second ) ) {
 				$error_data = $second->get_error_data();
 				Site_Agent_Audit_Log::record(
@@ -115,7 +116,7 @@ final class Site_Agent_Agent {
 		}
 
 		if ( self::is_explicit_write_request( $redacted_prompt ) && empty( $turn['write_actions'] ) && empty( $turn['needs_clarification'] ) ) {
-			$write_turn = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, $tool_results, true );
+			$write_turn = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, $tool_results, true, $deadline );
 			if ( is_wp_error( $write_turn ) ) {
 				$error_data = $write_turn->get_error_data();
 				Site_Agent_Audit_Log::record(

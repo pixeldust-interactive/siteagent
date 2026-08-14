@@ -47,14 +47,18 @@ const context = {
 	clearTimeout,
 };
 
+const source = fs.readFileSync(path.join(__dirname, '..', 'assets', 'admin.js'), 'utf8');
+
 vm.runInNewContext(
-	fs.readFileSync(path.join(__dirname, '..', 'assets', 'admin.js'), 'utf8'),
+	source,
 	context,
 	{ filename: 'assets/admin.js' }
 );
 
 assert.strictEqual(typeof chat.listeners.keydown, 'function', 'chat keyboard handler is registered');
 assert.strictEqual(typeof chat.listeners.click, 'function', 'chat pointer handler is registered');
+assert.match(source, /new AbortController\(\)/, 'REST requests have a browser-side deadline');
+assert.match(source, /Nothing was changed\. Try again or ask a shorter question\./, 'timeout recovery is actionable');
 
 for (const key of ['Enter', ' ']) {
 	prompt.value = '';

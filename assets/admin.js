@@ -170,6 +170,12 @@
 		const status = document.getElementById('site-agent-chat-status');
 		const proposals = document.getElementById('site-agent-proposals');
 		const newChat = document.getElementById('site-agent-new-chat');
+		const activateStarter = (starter) => {
+			if (!starter) return;
+			prompt.value = starter.dataset.prompt || '';
+			prompt.dispatchEvent(new Event('input', { bubbles: true }));
+			prompt.focus();
+		};
 
 		newChat?.addEventListener('click', () => {
 			conversationId = '';
@@ -182,8 +188,16 @@
 		chat?.addEventListener('click', (event) => {
 			const starter = event.target.closest('[data-prompt]');
 			if (!starter) return;
-			prompt.value = starter.dataset.prompt || '';
-			prompt.focus();
+			activateStarter(starter);
+		});
+
+		chat?.addEventListener('keydown', (event) => {
+			if (event.repeat || !['Enter', ' '].includes(event.key)) return;
+			const starter = event.target.closest('[data-prompt]');
+			if (!starter) return;
+			event.preventDefault();
+			event.stopPropagation();
+			activateStarter(starter);
 		});
 
 		prompt?.addEventListener('keydown', (event) => {

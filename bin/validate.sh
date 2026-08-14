@@ -15,9 +15,13 @@ find . -type f -name '*.php' \
 	-print0 | sort -z | xargs -0 -n1 php -l
 
 php tests/openai-response-parser-test.php
+php tests/openai-key-lifecycle-test.php
+php tests/write-intent-test.php
+php bin/generate-build-manifest.php --check
 
 if command -v node >/dev/null 2>&1; then
 	node --check assets/admin.js
+	node tests/admin-keyboard-test.js
 fi
 
 echo "Site Agent validation passed."

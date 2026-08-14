@@ -4,7 +4,7 @@ Tags: ai, administration, rollback, diagnostics, knowledge base
 Requires at least: 6.5
 Tested up to: 6.8
 Requires PHP: 8.0
-Stable tag: 0.2.4
+Stable tag: 0.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -80,6 +80,13 @@ When OpenAI is configured, Site Agent sends the current redacted question plus a
 * The model configured in Settings must exist in the connected OpenAI account.
 
 == Changelog ==
+
+= 0.2.5 =
+* Added deterministic API-key lifecycle tests covering missing, invalid, valid, replaced, rejected-replacement, and removed states.
+* Added persistent dismiss and reopen controls for first-run setup guidance.
+* Added explicit Enter and Space activation for starter prompts with automated keyboard coverage.
+* Required explicit supported change requests to return a validated proposal or clarification instead of prose-only plans.
+* Added a signed-in status readback that verifies the installed release file manifest and exposes its SHA-256 identity.
 
 = 0.2.4 =
 * Kept the chat composer in document order so it cannot obscure starter prompts or messages at supported viewports.

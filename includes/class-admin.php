@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Site_Agent_Admin {
 	private static ?self $instance = null;
 	private string $hook = '';
+	private const SETUP_DISMISSED_META = 'site_agent_setup_guidance_dismissed';
 
 	private const CAPS = array(
 		'site_agent_chat'           => 'Chat',
@@ -32,6 +33,7 @@ final class Site_Agent_Admin {
 		add_action( 'admin_post_site_agent_save_settings', array( $this, 'save_settings' ) );
 		add_action( 'admin_post_site_agent_save_api_key', array( $this, 'save_api_key' ) );
 		add_action( 'admin_post_site_agent_remove_api_key', array( $this, 'remove_api_key' ) );
+		add_action( 'admin_post_site_agent_toggle_setup_guidance', array( $this, 'toggle_setup_guidance' ) );
 	}
 
 	public function menu(): void {
@@ -148,13 +150,36 @@ final class Site_Agent_Admin {
 
 	private function render_chat(): void {
 		if ( ! Site_Agent_OpenAI_Client::is_configured() ) {
+			$dismissed = (bool) get_user_meta( get_current_user_id(), self::SETUP_DISMISSED_META, true );
+			if ( $dismissed ) {
+				?>
+			<section class="site-agent-setup site-agent-setup-compact" aria-label="<?php esc_attr_e( 'Setup guidance', 'site-agent' ); ?>">
+				<p><?php esc_html_e( 'Setup guidance is hidden. Site Agent will continue in local retrieval mode until OpenAI is connected.', 'site-agent' ); ?></p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="site_agent_toggle_setup_guidance">
+					<input type="hidden" name="guidance" value="show">
+					<?php wp_nonce_field( 'site_agent_toggle_setup_guidance' ); ?>
+					<button class="button" type="submit"><?php esc_html_e( 'Show setup guidance', 'site-agent' ); ?></button>
+				</form>
+			</section>
+				<?php
+			} else {
 			?>
 			<section class="site-agent-setup" aria-labelledby="site-agent-setup-title">
 				<div><span class="site-agent-eyebrow"><?php esc_html_e( 'One step left', 'site-agent' ); ?></span><h2 id="site-agent-setup-title"><?php esc_html_e( 'Connect Site Agent to OpenAI', 'site-agent' ); ?></h2></div>
 				<p><?php esc_html_e( 'Add an API key so Site Agent can understand questions and plan changes. Your key is encrypted and is never shown again.', 'site-agent' ); ?></p>
-				<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=site-agent&tab=settings' ) ); ?>"><?php esc_html_e( 'Complete setup', 'site-agent' ); ?></a>
+				<div class="site-agent-setup-actions">
+					<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=site-agent&tab=settings' ) ); ?>"><?php esc_html_e( 'Complete setup', 'site-agent' ); ?></a>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="site_agent_toggle_setup_guidance">
+						<input type="hidden" name="guidance" value="hide">
+						<?php wp_nonce_field( 'site_agent_toggle_setup_guidance' ); ?>
+						<button class="button" type="submit"><?php esc_html_e( 'Dismiss for now', 'site-agent' ); ?></button>
+					</form>
+				</div>
 			</section>
 			<?php
+			}
 		}
 		?>
 		<section class="site-agent-panel site-agent-chat-panel">
@@ -477,6 +502,21 @@ final class Site_Agent_Admin {
 		Site_Agent_OpenAI_Client::remove_key();
 		Site_Agent_Audit_Log::record( 'openai_connection_removed' );
 		wp_safe_redirect( admin_url( 'admin.php?page=site-agent&tab=settings&connection=removed' ) );
+		exit;
+	}
+
+	public function toggle_setup_guidance(): void {
+		if ( ! current_user_can( 'site_agent_chat' ) ) {
+			wp_die( esc_html__( 'You cannot change Site Agent guidance.', 'site-agent' ) );
+		}
+		check_admin_referer( 'site_agent_toggle_setup_guidance' );
+		$guidance = sanitize_key( (string) wp_unslash( $_POST['guidance'] ?? '' ) );
+		if ( 'hide' === $guidance ) {
+			update_user_meta( get_current_user_id(), self::SETUP_DISMISSED_META, 1 );
+		} elseif ( 'show' === $guidance ) {
+			delete_user_meta( get_current_user_id(), self::SETUP_DISMISSED_META );
+		}
+		wp_safe_redirect( admin_url( 'admin.php?page=site-agent&tab=chat' ) );
 		exit;
 	}
 

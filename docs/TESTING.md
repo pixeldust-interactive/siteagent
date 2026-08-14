@@ -4,6 +4,10 @@
 
 Run `php tests/openai-response-parser-test.php` to cover bare structured JSON, fenced JSON, JSON surrounded by prose, malformed JSON, missing fields, empty answers, refusals, and incomplete provider responses. These tests use deterministic provider fixtures and never require or read an API key.
 
+Run `php tests/openai-key-lifecycle-test.php` to cover missing, invalid, valid, rejected replacement, successful replacement, and removed key states without using a real credential or network request.
+
+Run `node tests/admin-keyboard-test.js` to verify that starter prompts respond exactly once to Enter, Space, and pointer activation and move focus to the populated composer.
+
 Run:
 
 ```bash

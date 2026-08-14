@@ -234,6 +234,10 @@
 }
 
 .site-agent-setup h2 { margin: 4px 0 6px; }
+.site-agent-setup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.site-agent-setup-actions form { margin: 0; }
+.site-agent-setup-compact { align-items: center; }
+.site-agent-setup-compact p { margin: 0; }
 .site-agent-eyebrow { color: var(--sa-blue); font-size: 12px; font-weight: 700; text-transform: uppercase; }
 .site-agent-key-row { display: flex; gap: 10px; margin: 10px 0 6px; max-width: 760px; }
 .site-agent-key-row input { flex: 1 1 auto; }

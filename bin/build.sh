@@ -31,6 +31,7 @@ git archive \
 	HEAD \
 	README.md \
 	assets \
+	build-manifest.json \
 	includes \
 	readme.txt \
 	site-agent.php \

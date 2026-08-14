@@ -34,6 +34,33 @@ final class Site_Agent_Action_Registry {
 		);
 	}
 
+	public static function write_contracts(): array {
+		return array(
+			'post.create' => array(
+				'required' => array( 'post_title or post_content' ),
+				'optional' => array( 'post_type', 'post_status', 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_parent', 'menu_order', 'post_date' ),
+			),
+			'post.update' => array(
+				'required' => array( 'post_id' ),
+				'optional' => array( 'post_status', 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_parent', 'menu_order', 'post_date' ),
+			),
+			'post.trash' => array( 'required' => array( 'post_id' ) ),
+			'post.meta.update' => array( 'required' => array( 'post_id', 'meta_key', 'value' ) ),
+			'seo.update' => array(
+				'required' => array( 'post_id', 'provider' ),
+				'optional' => array( 'title', 'description', 'focus_keyword' ),
+			),
+			'option.update' => array(
+				'required' => array( 'option', 'value' ),
+				'allowed_options' => array( 'blogname', 'blogdescription', 'timezone_string', 'date_format', 'time_format', 'start_of_week', 'show_on_front', 'page_on_front', 'page_for_posts', 'posts_per_page', 'blog_public' ),
+			),
+			'plugin.activate' => array( 'required' => array( 'plugin' ) ),
+			'plugin.deactivate' => array( 'required' => array( 'plugin' ) ),
+			'transients.delete_expired' => array( 'required' => array() ),
+			'rollback.perform' => array( 'required' => array( 'ledger_id' ), 'optional' => array( 'force' ) ),
+		);
+	}
+
 	public static function run_read( string $name, array $args = array() ): array|WP_Error {
 		if ( ! current_user_can( 'site_agent_inspect' ) ) {
 			return new WP_Error(

@@ -137,6 +137,7 @@ final class Site_Agent_Rest_Controller {
 		return rest_ensure_response(
 			array(
 				'version'       => SITE_AGENT_VERSION,
+				'build'         => Site_Agent_Build_Integrity::status(),
 				'provider'      => Site_Agent_OpenAI_Client::is_configured() ? 'openai' : 'local',
 				'model'         => Site_Agent_OpenAI_Client::model(),
 				'key_stored'    => 'wordpress_encrypted' === Site_Agent_OpenAI_Client::key_source(),

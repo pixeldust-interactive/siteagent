@@ -114,6 +114,27 @@ final class Site_Agent_Agent {
 			$turn = $second;
 		}
 
+		if ( self::is_explicit_write_request( $redacted_prompt ) && empty( $turn['write_actions'] ) && empty( $turn['needs_clarification'] ) ) {
+			$write_turn = Site_Agent_OpenAI_Client::complete_turn( $system, $history, $redacted_prompt, $context, $tool_results, true );
+			if ( is_wp_error( $write_turn ) ) {
+				$error_data = $write_turn->get_error_data();
+				Site_Agent_Audit_Log::record(
+					'chat_provider_failed',
+					array(
+						'phase'       => 'write_plan_required',
+						'error_code'  => sanitize_key( $write_turn->get_error_code() ),
+						'error'       => Site_Agent_Redactor::redact_string( $write_turn->get_error_message() ),
+						'diagnostics' => is_array( $error_data ) ? Site_Agent_Redactor::redact( $error_data ) : array(),
+					),
+					'error',
+					get_current_user_id(),
+					$redacted_prompt
+				);
+				return $write_turn;
+			}
+			$turn = $write_turn;
+		}
+
 		$proposal = null;
 		if ( ! empty( $turn['write_actions'] ) ) {
 			$proposal = Site_Agent_Action_Registry::propose(
@@ -229,11 +250,20 @@ final class Site_Agent_Agent {
 				'Do not claim certainty when hosting telemetry, external SaaS state, logs, or historical snapshots are unavailable.',
 				'Do not claim that a rollback exists until the server returns a reversible ledger entry.',
 				'Prefer the minimum necessary change. Ask for clarification when the target or intended result is ambiguous.',
+				'When the user explicitly requests a supported change and provides the required arguments, populate write_actions so the server can produce the review card. Never substitute prose-only plan narration for write_actions. Proposing is not executing.',
 				'Provide a useful non-empty answer for every final response. An intermediate read-tool plan may omit answer; after validated tool data is supplied, answer must be non-empty.',
 				'AI role focus: ' . self::ROLES[ $role ]['focus'],
 				'Read tools: ' . wp_json_encode( $catalog['read'] ),
 				'Write actions that may be proposed: ' . wp_json_encode( $catalog['write'] ),
+				'Exact write-action argument contracts: ' . wp_json_encode( Site_Agent_Action_Registry::write_contracts() ),
 			)
+		);
+	}
+
+	private static function is_explicit_write_request( string $prompt ): bool {
+		return 1 === preg_match(
+			'/^\s*(?:(?:please|kindly)\s+|(?:can|could|would)\s+you\s+|i\s+(?:want|need)\s+you\s+to\s+)?(?:create|update|change|replace|remove|delete|trash|activate|deactivate|publish|schedule|set|rollback|roll\s+back)\b/i',
+			$prompt
 		);
 	}
 

@@ -112,7 +112,8 @@ final class Site_Agent_OpenAI_Client {
 		array $history,
 		string $prompt,
 		array $context,
-		array $tool_results = array()
+		array $tool_results = array(),
+		bool $require_write_plan = false
 	): array|WP_Error {
 		$key = self::api_key();
 		if ( '' === $key ) {
@@ -132,6 +133,9 @@ final class Site_Agent_OpenAI_Client {
 				),
 			),
 		);
+		if ( $require_write_plan ) {
+			$payload['input'][0]['content'] .= "\nThe user made an explicit site-change request. If it is supported and sufficiently specified, include one or more exact write_actions using the supplied contracts. A write action creates a review proposal only and never executes the change. If required arguments are missing, set needs_clarification true and ask for them. Do not return prose that merely describes a plan with an empty write_actions array.";
+		}
 
 		$response = self::request( $payload, $key );
 		if ( is_wp_error( $response ) ) {
@@ -145,17 +149,29 @@ final class Site_Agent_OpenAI_Client {
 		}
 
 		$require_answer = ! empty( $tool_results );
-		$turn = self::parse_response( $response, $require_answer );
-		if ( is_wp_error( $turn ) && in_array( $turn->get_error_code(), array( 'provider_parse_error', 'provider_schema_error' ), true ) ) {
+		$turn = self::enforce_write_plan( self::parse_response( $response, $require_answer ), $require_write_plan );
+		if ( is_wp_error( $turn ) && in_array( $turn->get_error_code(), array( 'provider_parse_error', 'provider_schema_error', 'provider_write_plan_missing' ), true ) ) {
 			// Retry one malformed or incomplete planning object without duplicating the user submission.
-			$payload['input'][0]['content'] .= "\nYour previous response could not be validated. Return exactly one complete JSON object with non-empty answer text, plus read_calls, write_actions, needs_clarification, and clarification_question. Do not use Markdown fences or surrounding prose.";
+			$payload['input'][0]['content'] .= $require_write_plan
+				? "\nYour previous response omitted the required proposal. Return exactly one complete JSON object containing supported write_actions, or set needs_clarification true with a specific question. Do not merely describe the plan in answer text."
+				: "\nYour previous response could not be validated. Return exactly one complete JSON object with non-empty answer text, plus read_calls, write_actions, needs_clarification, and clarification_question. Do not use Markdown fences or surrounding prose.";
 			$retry = self::request( $payload, $key );
 			if ( ! is_wp_error( $retry ) ) {
-				$turn = self::parse_response( $retry, $require_answer );
+				$turn = self::enforce_write_plan( self::parse_response( $retry, $require_answer ), $require_write_plan );
 			}
 		}
 
 		return $turn;
+	}
+
+	private static function enforce_write_plan( array|WP_Error $turn, bool $required ): array|WP_Error {
+		if ( ! $required || is_wp_error( $turn ) || ! empty( $turn['write_actions'] ) || ! empty( $turn['needs_clarification'] ) ) {
+			return $turn;
+		}
+		return new WP_Error(
+			'provider_write_plan_missing',
+			__( 'OpenAI described the requested change but did not return a reviewable action plan. Nothing was executed; try again or clarify the target.', 'site-agent' )
+		);
 	}
 
 	private static function parse_response( array $response, bool $require_answer = false ): array|WP_Error {

@@ -65,6 +65,31 @@ foreach ( $cases as $name => $case ) {
 	}
 }
 
+$enforce = new ReflectionMethod( Site_Agent_OpenAI_Client::class, 'enforce_write_plan' );
+$enforce->setAccessible( true );
+$missing_plan = $enforce->invoke(
+	null,
+	array( 'answer' => 'I would update the setting.', 'write_actions' => array(), 'needs_clarification' => false ),
+	true
+);
+if ( ! is_wp_error( $missing_plan ) || 'provider_write_plan_missing' !== $missing_plan->get_error_code() ) {
+	$failures++;
+	fwrite( STDERR, "FAIL explicit write request accepts prose-only plan" . PHP_EOL );
+} else {
+	echo "PASS explicit write request rejects prose-only plan" . PHP_EOL;
+}
+$clarification = $enforce->invoke(
+	null,
+	array( 'answer' => '', 'write_actions' => array(), 'needs_clarification' => true ),
+	true
+);
+if ( is_wp_error( $clarification ) ) {
+	$failures++;
+	fwrite( STDERR, "FAIL explicit write request rejects clarification" . PHP_EOL );
+} else {
+	echo "PASS explicit write request permits clarification" . PHP_EOL;
+}
+
 exit( $failures > 0 ? 1 : 0 );
 
 function response( string $text ): array {

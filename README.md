@@ -4,7 +4,7 @@
 
 Site Agent is a private, admin-only WordPress knowledge and action layer. It inventories one site, retrieves relevant local evidence, lets an AI planner request tightly controlled tools, converts writes into exact review plans, and records supported changes for conflict-aware rollback.
 
-Version 0.2.4 is a developer build for backed-up test sites. It is intentionally broad enough to use, but not marketed as omniscient.
+Version 0.2.5 is a developer build for backed-up test sites. It is intentionally broad enough to use, but not marketed as omniscient.
 
 ## Security boundary
 
@@ -21,6 +21,7 @@ Version 0.2.4 is a developer build for backed-up test sites. It is intentionally
 - Supported writes capture before/after fingerprints.
 - Rollback refuses when the current target no longer matches the recorded after-state unless a user with high-risk permission explicitly forces it.
 - Network-wide plugin rollback is not claimed.
+- The authenticated status endpoint verifies every shipped file against `build-manifest.json` and reports the manifest SHA-256 for installed-artifact identity checks.
 
 ## Provider setup
 

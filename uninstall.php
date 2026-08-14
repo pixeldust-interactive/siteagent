@@ -22,6 +22,7 @@ function site_agent_uninstall_site(): void {
 	delete_option( 'site_agent_index_build_generation' );
 	delete_option( 'site_agent_index_generation' ); // Remove the pre-1.1 option if present.
 	delete_option( 'site_agent_index_last_completed_gmt' );
+	delete_metadata( 'user', 0, 'site_agent_setup_guidance_dismissed', '', true );
 	wp_clear_scheduled_hook( 'site_agent_daily_retention' );
 
 	foreach ( wp_roles()->roles as $slug => $data ) {

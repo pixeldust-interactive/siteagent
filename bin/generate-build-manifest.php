@@ -52,8 +52,9 @@ $target = $root . '/build-manifest.json';
 
 if ( $check ) {
 	$current = is_file( $target ) ? (string) file_get_contents( $target ) : '';
-	$current = str_replace( array( "\r\n", "\r" ), "\n", $current );
-	if ( ! hash_equals( hash( 'sha256', $manifest ), hash( 'sha256', $current ) ) ) {
+	$current_data = json_decode( $current, true );
+	$expected_data = json_decode( $manifest, true );
+	if ( ! is_array( $current_data ) || $current_data !== $expected_data ) {
 		fwrite( STDERR, "build-manifest.json is stale; run php bin/generate-build-manifest.php and commit the result." . PHP_EOL );
 		exit( 1 );
 	}

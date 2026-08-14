@@ -435,6 +435,8 @@
 .site-agent-proposal {
 	border: 2px solid var(--sa-border);
 	border-radius: 8px;
+	box-sizing: border-box;
+	max-width: 100%;
 	margin: 18px 0;
 	padding: 16px;
 }
@@ -453,6 +455,39 @@
 
 .site-agent-proposal li {
 	margin: 12px 0;
+}
+
+.site-agent-proposal-intro,
+.site-agent-proposal-note {
+	color: var(--sa-muted);
+	line-height: 1.5;
+}
+
+.site-agent-proposal-actions {
+	box-sizing: border-box;
+	padding-left: 24px;
+}
+
+.site-agent-proposal-actions > li,
+.site-agent-proposal-actions strong,
+.site-agent-technical-details,
+.site-agent-execution-outcome {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+.site-agent-technical-details {
+	margin-top: 9px;
+}
+
+.site-agent-execution-outcome {
+	border-top: 1px solid var(--sa-border);
+	margin-top: 14px;
+	padding-top: 14px;
+}
+
+.site-agent-execution-outcome h4 {
+	margin: 0 0 6px;
 }
 
 .site-agent-risk {
@@ -547,6 +582,13 @@
 .site-agent-raw-details > summary {
 	cursor: pointer;
 	font-weight: 600;
+}
+
+.site-agent-wrap .site-agent-technical-details > summary:focus-visible {
+	border-radius: 2px;
+	box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--sa-blue);
+	outline: 3px solid var(--sa-blue);
+	outline-offset: 3px;
 }
 
 .site-agent-technical-list {

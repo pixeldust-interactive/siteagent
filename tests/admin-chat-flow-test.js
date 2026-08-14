@@ -126,7 +126,7 @@ const fetch = async (url, options = {}) => {
 };
 
 const context = {
-	window: { SiteAgentAdmin: { restUrl: 'https://example.test/wp-json/site-agent/v1', nonce: 'nonce' } },
+	window: { SiteAgentAdmin: { restUrl: 'https://example.test/wp-json/site-agent/v1', nonce: 'nonce', changesUrl: 'https://example.test/wp-admin/admin.php?page=site-agent&tab=changes' } },
 	document: {
 		getElementById(id) { return elements[id] || null; },
 		createElement(tag) { return new TestNode(tag); },
@@ -165,7 +165,7 @@ form.requestSubmit = () => {
 		conversation_id: '11111111-1111-4111-8111-111111111111',
 		answer: 'Here is the answer.',
 		sources: [{ title: 'Homepage', type: 'page', object_id: 42 }],
-		proposal: { approval_token: 'approval-token', plan_hash: 'plan-hash', plan: { highest_risk: 'low', actions: [{ name: 'post.update', preview: 'Update the homepage', risk: 'low', args: { id: 42 } }] } },
+		proposal: { approval_token: 'approval-token', plan_hash: 'plan-hash', plan: { highest_risk: 'medium', actions: [{ name: 'option.update', preview: 'Change the WordPress setting blogdescription.', risk: 'medium', args: { option: 'blogdescription', value: 'Helpful answers' } }] } },
 		completion_token: 'completion-token',
 	}));
 	await activeSubmit;
@@ -173,6 +173,20 @@ form.requestSubmit = () => {
 	assert.strictEqual(chat.querySelector('.site-agent-message.is-working'), null, 'the active state is removed after completion');
 	assert.ok(chat.querySelector('.site-agent-sources'), 'sources remain attached to the conversation');
 	assert.ok(chat.querySelector('.site-agent-proposal'), 'the proposal remains attached to the conversation');
+	const proposal = chat.querySelector('.site-agent-proposal');
+	assert.strictEqual(proposal.querySelector('.site-agent-proposal-intro').textContent, 'Review only — nothing changes until you choose the action below.', 'proposal explains its review-only state');
+	assert.strictEqual(proposal.querySelector('.site-agent-proposal-actions').children[0].children[0].textContent, 'Change the site tagline to “Helpful answers”.', 'primary action uses plain language');
+	assert.strictEqual(proposal.querySelector('.site-agent-proposal-controls').children[0].textContent, 'Change the site tagline', 'confirmation names the action and scope');
+	const technical = proposal.querySelector('.site-agent-technical-details');
+	assert.ok(technical, 'canonical action data remains available on demand');
+	assert.strictEqual(technical.tagName, 'DETAILS', 'technical data uses a collapsed disclosure');
+	assert.strictEqual(technical.children[0].textContent, 'Technical details', 'technical disclosure has a readable label');
+	assert.strictEqual(technical.children[0].listeners.keydown, undefined, 'technical disclosure leaves native keyboard events entirely untouched');
+	assert.match(technical.children[1].textContent, /blogdescription/, 'internal option name is retained only in technical details');
+	assert.doesNotMatch(proposal.children[1].textContent + proposal.children[2].textContent, /blogdescription|option\.update|\{/, 'internal names and JSON do not lead the proposal');
+	proposal.querySelector('.site-agent-proposal-controls').children[1].listeners.click();
+	assert.strictEqual(chat.querySelector('.site-agent-proposal'), null, 'Cancel removes the review card without sending an execution request');
+	assert.strictEqual(fetchCalls.some((call) => call.url.endsWith('/actions/execute')), false, 'Cancel has no execution side effect');
 	assert.strictEqual(prompt.value, '', 'successful sends clear the draft');
 
 	prompt.value = 'This request will fail';
@@ -198,6 +212,8 @@ form.requestSubmit = () => {
 	assert.match(php, /Recent conversations/, 'history is available without crowding the chat');
 	assert.match(css, /\.site-agent-chat\s*\{[\s\S]*max-height:\s*58vh/, 'long conversations scroll independently');
 	assert.match(css, /overflow-wrap:\s*anywhere/, 'long content wraps without horizontal overflow');
+	assert.match(css, /\.site-agent-proposal\s*\{[\s\S]*box-sizing:\s*border-box[\s\S]*max-width:\s*100%/, 'proposal cards remain contained at narrow widths');
+	assert.match(css, /\.site-agent-wrap \.site-agent-technical-details > summary:focus-visible\s*\{[\s\S]*box-shadow:[\s\S]*outline:\s*3px solid/, 'technical disclosure has a dedicated visible keyboard-focus treatment');
 	assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*site-agent-working-dots/, 'working animation respects reduced motion');
 	assert.ok(fetchCalls.some((call) => call.url.endsWith('/chat/rendered')), 'visible completion records its receipt');
 

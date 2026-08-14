@@ -29,7 +29,7 @@ Verify its SHA-256 against the committed source. Then make an authenticated admi
 
 `GET /wp-json/site-agent-uat/v1/state`
 
-The initial response must show `authorized_host: true`, `enabled: false`, fixture version `0.1.1`, the committed source SHA-256, and install path `wp-content/mu-plugins/site-agent-uat-provider-fixture.php`.
+The initial response must show `authorized_host: true`, `enabled: false`, fixture version `0.2.0`, the committed source SHA-256, and install path `wp-content/mu-plugins/site-agent-uat-provider-fixture.php`.
 
 Before each test, select one scenario:
 
@@ -40,6 +40,16 @@ Before each test, select one scenario:
 ```
 
 Supported scenarios are returned by the GET response. After one Site Agent chat request, read the state again and verify `consumed: true`, the expected request count, and local fixture outcomes.
+
+### SA-16 homepage conversation
+
+`sa16_homepage_flow` is a three-provider-call scenario spanning two Site Agent chat turns. It remains selected until the full path completes:
+
+1. The fixture asks Site Agent to run `site.search` for the configured homepage/editor evidence and `content.get` for the authorized test homepage.
+2. It refuses to advance unless validated tool data contains the live `page_on_front`, front-page, `WP Maisy`, active Twenty Twenty-Five, and content-read evidence. It then asks exactly one plain-language content-goal question.
+3. Submit the exact test answer `Help visitors understand the eight focused WordPress tools and choose the right next step.` The fixture returns a draft-only review proposal and consumes the scenario.
+
+The proposal creates only a draft preview page if an administrator separately approves and executes it. UAT must stop at review, confirm zero executed writes, and never approve the plan.
 
 ## Required UAT scenarios
 
@@ -65,4 +75,3 @@ For every scenario, record exact Site Agent 0.2.7 build/manifest identity, the v
 4. Read Site Agent status and verify version/release/manifest are unchanged and provider state is `local`, key source `none`, and key stored `false`.
 
 Do not install or run this fixture on AskMaisy or any other host.
-

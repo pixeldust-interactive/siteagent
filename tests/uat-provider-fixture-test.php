@@ -48,10 +48,10 @@ $failures = 0;
 $select = static function ( string $scenario ): void {
 	Site_Agent_UAT_Provider_Fixture::select_scenario( new WP_REST_Request( array( 'enabled' => true, 'scenario' => $scenario ) ) );
 };
-$request = static function (): mixed {
+$request = static function ( string $body = '{"redacted":"payload"}' ): mixed {
 	return Site_Agent_UAT_Provider_Fixture::preempt_provider_request(
 		false,
-		array( 'body' => '{"redacted":"payload"}' ),
+		array( 'body' => $body ),
 		'https://api.openai.com/v1/responses'
 	);
 };
@@ -70,7 +70,7 @@ $assert = static function ( bool $condition, string $message ) use ( &$failures 
 $assert( isset( $GLOBALS['fixture_filters']['pre_http_request'] ), 'fixture registers provider interceptor on authorized host' );
 $assert( '' === Site_Agent_UAT_Provider_Fixture::filter_key( '' ), 'dummy key is absent while disabled' );
 $initial = $state();
-$assert( '0.1.1' === $initial['fixture_version'], 'fixture version is reported' );
+$assert( '0.2.0' === $initial['fixture_version'], 'fixture version is reported' );
 $assert( 64 === strlen( $initial['source_sha256'] ), 'fixture source SHA-256 is reported' );
 $assert( 'wp-content/mu-plugins/site-agent-uat-provider-fixture.php' === $initial['install_path'], 'fixture install path is reported' );
 
@@ -93,6 +93,33 @@ foreach ( array( 'malformed_then_valid', 'empty_exhausted', 'null_exhausted', 'm
 	$assert( is_array( $first ) && is_array( $second ), "{$scenario} returns local HTTP envelopes" );
 }
 
+$select( 'sa16_homepage_flow' );
+$sa16_first = $request();
+$sa16_after_first = $state();
+$assert( is_array( $sa16_first ) && ! $sa16_after_first['consumed'] && 1 === $sa16_after_first['request_count'], 'SA-16 fixture requests live homepage evidence first' );
+$sa16_missing = $request( '{"validated_tool_data":[]}' );
+$sa16_after_missing = $state();
+$assert( is_wp_error( $sa16_missing ) && 'site_agent_uat_evidence_missing' === $sa16_missing->get_error_code(), 'SA-16 fixture fails closed without homepage evidence' );
+$assert( 1 === $sa16_after_missing['request_count'] && ! $sa16_after_missing['evidence_verified'], 'SA-16 fixture keeps the evidence step pending after a failed check' );
+$sa16_evidence = '{"validated_tool_data":[{"name":"site.search","result":{"page_on_front":"9","front_page_id":9,"active_theme":"Twenty Twenty-Five","title":"WP Maisy"}},{"name":"content.get","result":{"id":9,"title":"WP Maisy"}}]}';
+$sa16_second = $request( $sa16_evidence );
+$sa16_after_second = $state();
+$assert( is_array( $sa16_second ) && 2 === $sa16_after_second['request_count'] && $sa16_after_second['evidence_verified'] && ! $sa16_after_second['consumed'], 'SA-16 fixture verifies live evidence before clarification' );
+$sa16_wrong_goal = $request( '{"question":"Change everything."}' );
+$sa16_after_wrong_goal = $state();
+$assert( is_wp_error( $sa16_wrong_goal ) && 'site_agent_uat_evidence_missing' === $sa16_wrong_goal->get_error_code(), 'SA-16 fixture rejects an unapproved content goal' );
+$assert( 2 === $sa16_after_wrong_goal['request_count'] && ! $sa16_after_wrong_goal['consumed'], 'SA-16 fixture keeps the proposal step pending after a failed goal check' );
+$sa16_goal = '{"question":"Help visitors understand the eight focused WordPress tools and choose the right next step."}';
+$sa16_third = $request( $sa16_goal );
+$sa16_after_third = $state();
+$assert( is_array( $sa16_third ) && $sa16_after_third['consumed'] && 3 === $sa16_after_third['request_count'], 'SA-16 fixture consumes after the guidance and draft-proposal path' );
+$sa16_second_body = json_decode( (string) ( $sa16_second['body'] ?? '' ), true );
+$sa16_second_text = (string) ( $sa16_second_body['output'][0]['content'][0]['text'] ?? '' );
+$sa16_third_body = json_decode( (string) ( $sa16_third['body'] ?? '' ), true );
+$sa16_third_text = (string) ( $sa16_third_body['output'][0]['content'][0]['text'] ?? '' );
+$assert( 1 === substr_count( $sa16_second_text, '?' ) && str_contains( $sa16_second_text, 'What should the new section help visitors understand or do?' ), 'SA-16 fixture asks one plain-language content question' );
+$assert( str_contains( $sa16_third_text, '"post_status":"draft"' ) && str_contains( $sa16_third_text, 'Nothing changes on the homepage' ), 'SA-16 fixture returns a reversible draft-only review proposal' );
+
 $select( 'valid' );
 $assert( str_starts_with( Site_Agent_UAT_Provider_Fixture::filter_key( '' ), 'sk-test-' ), 'enabled fixture exposes only a dummy key' );
 $blocked = Site_Agent_UAT_Provider_Fixture::preempt_provider_request( false, array(), 'https://api.openai.com/v1/unknown' );
@@ -103,4 +130,3 @@ Site_Agent_UAT_Provider_Fixture::disable();
 $assert( false === $state()['enabled'], 'disable clears fixture state' );
 
 exit( $failures > 0 ? 1 : 0 );
-
